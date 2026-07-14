@@ -1,22 +1,42 @@
-# falcon-skills
+# skills
 
-Agent skills for coding workflows, installable with [`npx skills`](https://github.com/vercel-labs/skills).
+Agent skills that finish the job — review, ship, and watch CI so you don't babysit it.
 
-## Install
+Small, hackable skills for the unglamorous end of shipping: reviewing your own
+diff, opening the PR, watching CI turn green, and keeping an eye on Sentry.
+Built on [`npx skills`](https://github.com/vercel-labs/skills) — copy them into
+your repo and make them yours.
+
+## Quickstart
 
 ```bash
-# all of them
-npx skills add victor-falcon/falcon-skills
-
-# or pick specific ones
-npx skills add victor-falcon/falcon-skills --skill ship --skill pr-ci
+npx skills add victor-falcon/skills
 ```
 
-## Skills
+Bam — installed. Or pick one:
 
-| Skill | What it does |
-|-------|--------------|
-| **ship** | Implement a task and finalize it: two parallel reviews, QA appropriate to the change (browser + video for UI, otherwise the way it's actually used), a PR, and watching CI until every required check is green. |
-| **pr-ci** | Watch the current PR's CI, fix failures caused by the diff, retry flakes, and warn on unrelated main-branch breakage. |
-| **sentry-issues** | Autonomous loop — triage Sentry issues, fix the code-fixable & user-relevant ones, and open PRs (auto-merge when confident, draft otherwise). Run with `/loop`. |
-| **sentry-logs** | Autonomous loop — periodically scan Sentry logs for errors or wrong behavior and report them (no fixes). Run with `/loop`. |
+```bash
+npx skills add victor-falcon/skills --skill ship
+```
+
+## The skills
+
+**Slash commands** — you run these:
+
+- **ship** — Implement a task, then finalize it properly: two parallel reviews,
+  real QA (browser + video for UI), a PR, and it watches CI until every required
+  check is green.
+- **pr-ci** — Babysits your PR's CI so you don't: fixes failures caused by your
+  diff, retries flakes, and warns when it's `main` that's broken, not you.
+
+**Autonomous loops** — run these with `/loop`:
+
+- **sentry-issues** — Triages Sentry issues, fixes the ones worth fixing, and
+  opens PRs (auto-merge when confident, draft when not). `/loop 2h /sentry-issues`
+- **sentry-logs** — Scans Sentry logs on a timer and pings you when something
+  looks wrong. Reports, never touches code. `/loop 1h /sentry-logs`
+
+## Make them yours
+
+These are starting points, not gospel. `npx skills add` copies each SKILL.md
+into your repo — open it and rewrite anything that doesn't fit how you work.
