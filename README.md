@@ -1,3 +1,5 @@
+![skills](assets/header.png)
+
 # skills
 
 Agent skills that finish the job — review, ship, and watch CI so you don't babysit it.
