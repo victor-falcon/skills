@@ -28,6 +28,12 @@ npx skills add victor-falcon/skills --skill ship
   check is green.
 - **pr-ci** — Babysits your PR's CI so you don't: fixes failures caused by your
   diff, retries flakes, and warns when it's `main` that's broken, not you.
+- **technical-review** — Reviews a diff for architecture, bad patterns, and
+  Fowler code smells. The code half of `ship`, on its own.
+- **product-review** — Reviews a diff for side-effects and bugs plus whether it's
+  actually right for the user (requirement fit, UX, empty/error states, copy).
+- **qa-change** — QAs a change the way it's actually used: browser + recorded
+  video for UI, or run the command / hit the endpoint / check logs for backend.
 
 **Autonomous loops** — run these with `/loop`:
 
