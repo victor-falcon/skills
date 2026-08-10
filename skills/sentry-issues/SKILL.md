@@ -12,20 +12,18 @@ For each bug, **before opening a PR**:
 
 ## 1. Two parallel reviews
 
-Launch two agents **in parallel** (in the same message):
+Launch two agents **in parallel** (in the same message) over the diff, each running one of these skills:
 
-1. **Architecture review**: code architecture, duplicated code, untested code, etc.
-2. **Product & bug review**: possible user-facing bugs, product-level implementations that aren't right, or changes that could cause wrong behavior or new bugs.
+1. **`technical-review`**: code architecture, bad patterns, consistency with existing conventions and components, and the Fowler code smells.
+2. **`product-review`**: side-effects and bugs (what could break) plus whether the change is correct and sensible for the user.
 
-## 2. Apply changes
+Those skills only report by default; here you **do** act on them: apply the changes you consider reasonable from their findings — use judgment, not every finding warrants a change — and briefly explain what you apply and what you drop, and why.
 
-Apply the changes recommended by these agents that you consider most important. Put **each one in a separate commit** with an appropriate explanation.
-
-## 3. Estimate & ship
+## 2. Estimate & ship
 
 Estimate the **safety** of the fix and its **complexity**:
 
-- If it's **not very complex** and you are **very confident** you're fixing the problem without creating new ones → create the PR and **enable auto-merge**.
+- If it's **not very complex** and you are **very confident** you're fixing the problem without creating new ones → create the PR and **enable auto-merge**, and watch the CI.
 - Otherwise → create the PR as a **draft**.
 
 PR title and description in **English**.
