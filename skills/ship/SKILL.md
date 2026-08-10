@@ -6,6 +6,17 @@ argument-hint: <task description>
 
 Your task: $ARGUMENTS
 
+## 0. Clean starting point (before writing any code)
+
+Check `git status` and `git log --oneline @{u}..` / the diff against the base branch:
+
+- **Uncommitted or stashed changes that aren't part of this task**: stop and ask me what to do with them (keep, stash, discard). Don't build on top of them.
+- **The branch already has commits that aren't part of this task**: stop and ask whether to branch off the base instead.
+- **The branch is behind the base branch**: update it (rebase or merge onto the latest base) before starting.
+- **You're on the base branch itself**: create a new branch from the up-to-date base.
+
+Only start implementing from a clean, up-to-date starting point.
+
 Implement it. **Once the implementation is ready, you MUST run this wrap-up in order:**
 
 ## 1. Two parallel reviews
@@ -23,6 +34,7 @@ Run the **`qa-change`** skill before creating the PR: it decides whether browser
 
 ## 3. PR
 
+- **Before creating it, review the full diff against the base branch** (`git diff <base>...HEAD`) file by file: every file and hunk must belong to this task. If something unrelated slipped in (leftovers from a previous session, debug prints, formatting churn, generated files, an unrelated fix), revert it or move it to its own branch — and tell me what you removed. Don't open a PR with unrelated changes in it.
 - Create the PR (title and description **in English**).
 - **Only if you recorded a video:** include a **Demo** section with a clearly marked **placeholder** so I can attach the video manually, and tell me the exact path of the generated video so I can drag it in.
 
