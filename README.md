@@ -41,8 +41,9 @@ npx skills add victor-falcon/skills --skill ship
 
 **Autonomous loops** — run these with `/loop`:
 
-- **sentry-issues** — Triages Sentry issues, fixes the ones worth fixing, and
-  opens PRs (auto-merge when confident, draft when not). `/loop 2h /sentry-issues`
+- **sentry-issues** — Triages Sentry issues and hands each fix worth making to a
+  fresh agent in its own worktree off `origin/main`, which opens the PR
+  (auto-merge when confident, draft when not). `/loop 2h /sentry-issues`
 - **sentry-logs** — Scans Sentry logs on a timer and pings you when something
   looks wrong. Reports, never touches code. `/loop 1h /sentry-logs`
 
