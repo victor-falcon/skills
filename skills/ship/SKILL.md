@@ -36,7 +36,14 @@ Run the **`qa-change`** skill before creating the PR: it decides whether browser
 
 - **Before creating it, review the full diff against the base branch** (`git diff <base>...HEAD`) file by file: every file and hunk must belong to this task. If something unrelated slipped in (leftovers from a previous session, debug prints, formatting churn, generated files, an unrelated fix), revert it or move it to its own branch — and tell me what you removed. Don't open a PR with unrelated changes in it.
 - Create the PR (title and description **in English**).
-- **Only if you recorded a video:** include a **Demo** section with a clearly marked **placeholder** so I can attach the video manually, and tell me the exact path of the generated video so I can drag it in.
+- **Only if QA captured evidence:** reference each file in the body file where it belongs (a video as its bare local path on its own line, a screenshot as `![alt](<local path>)` under its Before/After heading) and pass one `--attach` per file — `gh` replaces each path with the uploaded URL in place:
+
+  ```sh
+  gh pr create --title "..." --body-file <body.md> \
+    --attach '<before.png>' --attach '<after.png>' --attach '<demo.mp4>'
+  ```
+
+  Then check the media actually landed (`gh pr view --json body`). If the upload fails, leave a placeholder and tell me the exact paths so I can drag them in.
 
 ## 4. Watch CI
 
