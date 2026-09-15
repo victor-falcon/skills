@@ -9,9 +9,9 @@ diff, opening the PR, watching CI turn green, and keeping an eye on Sentry.
 Built on [`npx skills`](https://github.com/vercel-labs/skills) — copy them into
 your repo and make them yours.
 
-|  |  |
+| Check this video |  |
 | --- | --- |
-| [<img src="https://img.youtube.com/vi/y4F5K6yhxqY/mqdefault.jpg" width="240">](https://www.youtube.com/watch?v=y4F5K6yhxqY) | **[Esta Skill de IA programa MEJOR que todo tu equipo](https://www.youtube.com/watch?v=y4F5K6yhxqY)**<br>How these skills work and how I use them day to day. |
+| [<img src="https://img.youtube.com/vi/y4F5K6yhxqY/mqdefault.jpg" width="240">](https://www.youtube.com/watch?v=y4F5K6yhxqY) | **[This AI Skill programs BETTER than your entire team](https://www.youtube.com/watch?v=y4F5K6yhxqY)**<br>How these skills work and how I use them day to day. This is video is mainly focused on the most important skill on this repo, /ship. |
 
 ## Quickstart
 
