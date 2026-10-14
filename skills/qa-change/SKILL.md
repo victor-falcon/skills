@@ -13,6 +13,7 @@ QA the change. **By default** that's your working changes; `$ARGUMENTS` can narr
 If the change **has a UI surface**, do real browser QA:
 
 - Launch a browser (Playwright) and **really test the change in the running app**, not just unit tests.
+- **Run the browser headless whenever possible** — no window popping up on my screen or stealing focus. In a Playwright script keep `headless: true` (the default; video recording and screenshots work headless too); if the Playwright MCP opens a visible window, prefer a headless script instead. Only go headed when the test genuinely can't run headless (e.g. an SSO/OAuth flow or a feature that breaks without a real display), and say why in the report.
 - Confirm everything works as expected, including the relevant edge cases (e.g. cancel/confirm, empty states, mobile vs desktop where it applies).
 - Verify the real effect (DB, UI, network) when it makes sense — don't stop at the visual layer.
 - **Capture evidence** of what you tested and the result, and pick the format that explains it best (you can mix both):
