@@ -42,6 +42,9 @@ npx skills add victor-falcon/skills --skill ship
   scouts the repo first, briefs it with what it found, and tells it to `/ship`.
 - **qa-change** — QAs a change the way it's actually used: browser + recorded
   video for UI, or run the command / hit the endpoint / check logs for backend.
+- **orchestrate** — Give it a goal and walk away: it splits it into PRs,
+  delegates each to its own worktree agent, steers them from one place, merges
+  what's safe, cleans up the worktrees, and keeps going until the goal is met.
 
 **Autonomous loops** — run these with `/loop`:
 
