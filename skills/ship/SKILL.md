@@ -30,7 +30,7 @@ Those skills only report by default; here you **do** act on them: apply the chan
 
 ## 2. QA
 
-Run the **`qa-change`** skill before creating the PR: it decides whether browser QA makes sense, does real browser QA + a recorded video for UI surfaces, or QAs a backend change the way it's actually used (run the command, hit the endpoint, check DB/logs/tests).
+Run the **`qa-change`** skill before creating the PR: it decides whether browser QA makes sense, does real browser QA + a recorded video for UI surfaces, or QAs a backend change the way it's actually used (run the command, hit the endpoint, check DB/logs/tests). Any browser it launches runs **headless** unless the test genuinely can't.
 
 ## 3. PR
 
