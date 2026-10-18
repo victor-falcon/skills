@@ -82,6 +82,10 @@ in the ledger. Don't wait on one agent before delegating the next.
 
 Repeat until the goal is done:
 
+0. **Clear out finished worktrees**: `mux_worktree_gc` drops every worktree whose
+   PR is merged or closed, with its workspace / session and local branch — yours
+   and any earlier hand-off's. Update the ledger for the tasks it cleaned:
+   `merged`, or `abandoned` if the PR was closed.
 1. **Check on each running agent**: `mux_agent_status <name>`; when it's `idle`,
    `done` or `blocked`, read it with `mux_agent_read <name> 200` and find the last
    `ORCHESTRATE:` line. To wait instead of polling: `mux_agent_wait <name> 600`
@@ -148,7 +152,9 @@ If PushNotification is available, use it whenever you're waiting on me.
 
 ## 7. Clean up after every merge
 
-As soon as a PR is merged (by you or anyone), its worktree is dead weight:
+As soon as a PR is merged (by you or anyone), its worktree is dead weight. The
+`mux_worktree_gc` at the top of each pass catches it anyway; doing it right away
+keeps the agent count honest:
 
 1. Make sure the PR is really `MERGED` (`gh pr view <n> --json state`).
 2. Stop the agent: `mux_agent_keys <name> ctrl+c ctrl+c`.
@@ -168,8 +174,9 @@ the ledger.
 The goal is done when every item in the definition of done holds **on the base
 branch after the merges** — check each one, don't infer it from the PRs. Then:
 
-- No agents, worktrees or workspaces of yours are left: every one in the ledger is
-  gone from `git worktree list` and `mux_agent_status` no longer finds its agent.
+- No agents, worktrees or workspaces of yours are left: run `mux_worktree_gc` one
+  last time, then check every one in the ledger is gone from `git worktree list`
+  and `mux_agent_status` no longer finds its agent.
 - Give me a short report: what got merged (PR links), anything left waiting on
   me, the decisions you defaulted, and follow-ups you noticed but kept out of scope.
 - Mark the ledger `done`.
