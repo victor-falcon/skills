@@ -39,9 +39,14 @@ running it can't reach me. Everything else: default it, and say so.
 
 ## 3. Create the worktree
 
+First clear out what earlier hand-offs left behind: `mux_worktree_gc` removes every
+worktree it created whose PR is merged or closed, with its workspace (Herdr) or
+session (Rex) and local branch. It keeps any with uncommitted changes to tracked
+files and says so — pass that on to me, don't force it.
+
 ```bash
 git fetch origin --quiet
-. ~/.config/pet/lib/multiplexer.sh && mux_worktree_create "$PWD" <kebab-branch> origin/<base> <short-label>
+. ~/.config/pet/lib/multiplexer.sh && mux_worktree_gc && mux_worktree_create "$PWD" <kebab-branch> origin/<base> <short-label>
 ```
 
 It prints `<worktree path><TAB><handle>` — the handle is the Herdr root pane or the
