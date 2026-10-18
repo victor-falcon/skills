@@ -16,7 +16,7 @@ The worktree **must start from `origin/main`**: `git fetch origin` first, then b
 
 Brief it with the Sentry evidence you already gathered, so it doesn't dig it up again: the issue link, the stack trace, the code path it points at, how often it fires and since when, and the reproduction if you worked one out. Then move on to the next issue — don't sit waiting for the agent.
 
-If Herdr isn't available, `delegate` stops. In that case do the fix yourself, on a branch off `origin/main`, and run **`ship`** on it.
+If neither Herdr nor Rex is available, `delegate` stops. In that case do the fix yourself, on a branch off `origin/main`, and run **`ship`** on it.
 
 ## 2. Tell it how to ship
 
