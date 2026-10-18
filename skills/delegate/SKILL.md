@@ -1,6 +1,6 @@
 ---
 name: delegate
-description: Hand a task off to a fresh agent in its own Herdr worktree, briefed with what you already found out and told to /ship it
+description: Hand a task off to a fresh agent in its own worktree (Herdr or Rex), briefed with what you already found out and told to /ship it
 argument-hint: <task description>
 ---
 
@@ -8,7 +8,15 @@ The task to hand off: $ARGUMENTS
 
 You don't implement this. You scout it, brief someone else, and stay free.
 
-Requires Herdr: check `test "${HERDR_ENV:-}" = 1` first. If it fails, say so and stop.
+Every multiplexer step goes through `~/.config/pet/lib/multiplexer.sh`, which drives Herdr
+or Rex, whichever you're running in. Shell state doesn't survive between Bash
+calls, so source it at the start of each one:
+
+```bash
+. ~/.config/pet/lib/multiplexer.sh && mux_backend
+```
+
+It must print `herdr` or `rex`. Anything else: say so and stop.
 
 ## 1. Scout before you delegate
 
@@ -33,32 +41,37 @@ running it can't reach me. Everything else: default it, and say so.
 
 ```bash
 git fetch origin --quiet
-herdr worktree create --cwd "$PWD" --branch <kebab-branch> --base origin/<base> --label <short> --no-focus
+. ~/.config/pet/lib/multiplexer.sh && mux_worktree_create "$PWD" <kebab-branch> origin/<base> <short-label>
 ```
 
-Read the workspace and root pane ID from the JSON response — don't guess them.
+It prints `<worktree path><TAB><handle>` — the handle is the Herdr root pane or the
+Rex session the agent goes in. Keep both; don't guess them.
 
 ## 4. Start the agent and brief it
 
+Write the brief to a file first; long prompts don't survive shell quoting. Then:
+
 ```bash
-herdr agent start <kebab-name> --kind claude --pane <root_pane_id> -- --dangerously-skip-permissions
-herdr agent prompt <kebab-name> "$(cat <brief-file>)" --wait
+. ~/.config/pet/lib/multiplexer.sh && mux_agent_launch <kebab-name> <handle> <worktree path> <brief-file> --dangerously-skip-permissions
 ```
 
-Write the brief to a file first; long prompts don't survive shell quoting.
+The name must match `[a-z][a-z0-9_-]{0,31}`. It returns once the agent has picked
+up the brief. Exit status 3 means it's stuck on Claude's folder-trust dialog:
+tell me, don't answer it yourself.
 
-It carries, in order: the task; **everything you found while scouting**, so it
-doesn't repeat your work; the decisions I made and the ones you defaulted; what it
-must not touch; the deliverable. Last line is `/ship`.
+The brief carries, in order: the task; **everything you found while scouting**, so
+it doesn't repeat your work; the decisions I made and the ones you defaulted; what
+it must not touch; the deliverable. Last line is `/ship`.
 
-> `agent_prompt_stalled` is usually a false alarm — the prompt landed and the agent
-> is already working. Check `herdr agent get` / `herdr agent read` before reacting,
-> and **never re-send**: you'd queue the brief twice.
+> A launch or prompt that reports a failure may still have landed. Check
+> `mux_agent_status <name>` / `mux_agent_read <name>` before reacting, and
+> **never re-send**: you'd queue the brief twice.
 
 ## 5. Report and get out of the way
 
-Give me the worktree path, the branch, the agent name, and how to follow it
-(`herdr agent read <name> --source recent-unwrapped`). Don't block waiting on it.
+Give me the worktree path, the branch, the agent name, and where to follow it: the
+Herdr workspace, or the Rex session named after the label (the agent's tab inside
+it carries the agent's name). Don't block waiting on it.
 
 Anything scouting surfaced that I should decide but that doesn't block the work —
 a rollout step, a cost, a stale assumption — goes here in a line or two, outside

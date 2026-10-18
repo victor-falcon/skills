@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Autonomously drive a goal to done — split it into tasks, delegate each to its own Herdr worktree agent that /ships it, steer them from here, merge the PRs that are safe, and clean up the worktrees
+description: Autonomously drive a goal to done — split it into tasks, delegate each to its own worktree agent (Herdr or Rex) that /ships it, steer them from here, merge the PRs that are safe, and clean up the worktrees
 argument-hint: <goal>
 ---
 
@@ -11,7 +11,9 @@ you don't write the code yourself. I will **never** go into the worktrees or tal
 to the agents there: everything goes through you, and you keep going until the
 goal is met.
 
-Requires Herdr: check `test "${HERDR_ENV:-}" = 1` first. If it fails, say so and stop.
+Every multiplexer step goes through `~/.config/pet/lib/multiplexer.sh`, the same helper
+`delegate` uses. Source it at the start of each Bash call (`. ~/.config/pet/lib/multiplexer.sh`)
+and check `mux_backend` prints `herdr` or `rex` first. If it doesn't, say so and stop.
 
 ## 0. Ledger first — resume if it exists
 
@@ -25,7 +27,7 @@ LEDGER="$(git rev-parse --path-format=absolute --git-common-dir)/orchestrate/<go
 If it already exists, **read it and resume** from where it says — don't re-plan
 and don't re-delegate tasks that are already running. Otherwise create it with:
 the goal, the definition of done, the base branch, the task list (id, title,
-depends-on, status, agent name, workspace ID, worktree path, branch, PR) and a
+depends-on, status, agent name, handle, worktree path, branch, PR) and a
 decision log. Update it after **every** state change, before doing anything else.
 
 ## 1. Pin down "done" — the only time you ask me
@@ -73,19 +75,21 @@ these overrides — you are the one the agent reports to, not me:
     - `ORCHESTRATE: question <the question>` — you need a decision to continue.
     - `ORCHESTRATE: failed <why>` — you can't finish this task.
 
-Record the agent name, workspace ID, worktree path and branch from the JSON
-responses in the ledger. Don't wait on one agent before delegating the next.
+Record the agent name, handle, worktree path and branch that `delegate` got back
+in the ledger. Don't wait on one agent before delegating the next.
 
 ## 4. Steer — the loop
 
 Repeat until the goal is done:
 
-1. **Check on each running agent**: `herdr agent get <name>`; when it's `idle`,
-   `done` or `blocked`, read it with `herdr agent read <name> --source recent-unwrapped --lines 200`
-   and find the last `ORCHESTRATE:` line. To wait instead of polling:
-   `herdr agent wait <name> --timeout 600000`.
-2. **Act on what it says**, always through `herdr agent prompt <name> "..." --wait`
-   (write long prompts to a file first):
+1. **Check on each running agent**: `mux_agent_status <name>`; when it's `idle`,
+   `done` or `blocked`, read it with `mux_agent_read <name> 200` and find the last
+   `ORCHESTRATE:` line. To wait instead of polling: `mux_agent_wait <name> 600`
+   (prints the state it settled on). Under Rex the read only sees the agent's
+   screen, not its scrollback: if the status line has scrolled off, ask the agent
+   to repeat it rather than assuming there is none.
+2. **Act on what it says**, always through `mux_agent_prompt <name> "..."`
+   (for long prompts, `"$(cat <file>)"`):
    - `question` → answer it from the plan, the repo and the decisions you logged.
      Only bring it to me if it's one of the things in step 6.
    - `failed` → read why. Re-brief with what it was missing, or split / re-plan
@@ -147,14 +151,13 @@ If PushNotification is available, use it whenever you're waiting on me.
 As soon as a PR is merged (by you or anyone), its worktree is dead weight:
 
 1. Make sure the PR is really `MERGED` (`gh pr view <n> --json state`).
-2. Stop the agent: `herdr agent send-keys <name> ctrl+c`, twice if needed.
-3. Remove the worktree: `herdr worktree remove --workspace <workspace-id>`. Only
-   use `--force` if what's left is build output or QA artifacts — if there are
-   uncommitted source changes, find out what they are first.
-4. If the workspace still shows in `herdr workspace list`, `herdr workspace close <id>`.
-5. Delete the local branch if it's left (`git branch -D <branch>`) and
+2. Stop the agent: `mux_agent_keys <name> ctrl+c ctrl+c`.
+3. Remove the worktree and its workspace: `mux_worktree_remove <handle> <worktree path>`.
+   Only add `--force` if what's left is build output or QA artifacts — if there
+   are uncommitted source changes, find out what they are first.
+4. Delete the local branch if it's left (`git branch -D <branch>`) and
    `git fetch --prune`.
-6. Mark the task `merged` in the ledger.
+5. Mark the task `merged` in the ledger.
 
 Do the same for a task you abandon: close its PR with a comment saying why, then
 clean up. Only ever close workspaces and worktrees **you created** — they're in
@@ -165,8 +168,8 @@ the ledger.
 The goal is done when every item in the definition of done holds **on the base
 branch after the merges** — check each one, don't infer it from the PRs. Then:
 
-- No agents, worktrees or workspaces of yours are left (`herdr worktree list`,
-  `herdr agent list`).
+- No agents, worktrees or workspaces of yours are left: every one in the ledger is
+  gone from `git worktree list` and `mux_agent_status` no longer finds its agent.
 - Give me a short report: what got merged (PR links), anything left waiting on
   me, the decisions you defaulted, and follow-ups you noticed but kept out of scope.
 - Mark the ledger `done`.
