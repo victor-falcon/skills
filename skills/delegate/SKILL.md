@@ -46,18 +46,24 @@ files and says so — pass that on to me, don't force it.
 
 ```bash
 git fetch origin --quiet
-. ~/.config/pet/lib/multiplexer.sh && mux_worktree_gc && mux_worktree_create "$PWD" <kebab-branch> origin/<base> <short-label>
+. ~/.config/pet/lib/multiplexer.sh && mux_worktree_gc && mux_worktree_create "$PWD" <kebab-branch> origin/<base> "<label>" ["<group>"]
 ```
 
+`<label>` is a few plain words naming the task (`full page expenses`). Pass
+`<group>` only when the caller gave you one (orchestrate does): every worktree with
+the same group shares one Rex session. Under Rex the session is named after the
+one you're in plus the group, or the label when there's no group:
+`factorial / full page expenses`. Herdr names the workspace after the label.
+
 It prints `<worktree path><TAB><handle>` — the handle is the Herdr root pane or the
-Rex session the agent goes in. Keep both; don't guess them.
+Rex session name, which has spaces, so always quote it. Keep both; don't guess them.
 
 ## 4. Start the agent and brief it
 
 Write the brief to a file first; long prompts don't survive shell quoting. Then:
 
 ```bash
-. ~/.config/pet/lib/multiplexer.sh && mux_agent_launch <kebab-name> <handle> <worktree path> <brief-file> --dangerously-skip-permissions
+. ~/.config/pet/lib/multiplexer.sh && mux_agent_launch <kebab-name> "<handle>" "<worktree path>" <brief-file> --dangerously-skip-permissions
 ```
 
 The name must match `[a-z][a-z0-9_-]{0,31}`. It returns once the agent has picked
@@ -75,8 +81,8 @@ it must not touch; the deliverable. Last line is `/ship`.
 ## 5. Report and get out of the way
 
 Give me the worktree path, the branch, the agent name, and where to follow it: the
-Herdr workspace, or the Rex session named after the label (the agent's tab inside
-it carries the agent's name). Don't block waiting on it.
+Herdr workspace, or the Rex session (`<current session> / <group or label>`), where
+the agent's tab carries its name. Don't block waiting on it.
 
 Anything scouting surfaced that I should decide but that doesn't block the work —
 a rollout step, a cost, a stale assumption — goes here in a line or two, outside

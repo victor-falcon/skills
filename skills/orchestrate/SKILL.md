@@ -61,6 +61,10 @@ these overrides — you are the one the agent reports to, not me:
 - **Skip delegate's "ask me" step**: you already settled the decisions in step 1.
   Pass them in the brief.
 - **Always `--base origin/<base>`**, after a fresh `git fetch origin`.
+- **One group for the whole goal**: pass the same `<group>` to every task — a few
+  plain words naming the goal (`full page expenses`) — so under Rex all its agents
+  sit as tabs in one session, `<current session> / <group>`. Each task's `<label>`
+  names the task itself. Record the group in the ledger and reuse it on resume.
 - **Agent names** `orc-<task-id>-<short>`, matching `[a-z][a-z0-9_-]{0,31}`.
 - **Add to the brief, before `/ship`:**
   - Its place in the plan: the goal, what other tasks exist, what's already
@@ -158,7 +162,7 @@ keeps the agent count honest:
 
 1. Make sure the PR is really `MERGED` (`gh pr view <n> --json state`).
 2. Stop the agent: `mux_agent_keys <name> ctrl+c ctrl+c`.
-3. Remove the worktree and its workspace: `mux_worktree_remove <handle> <worktree path>`.
+3. Remove the worktree and its workspace: `mux_worktree_remove "<handle>" "<worktree path>"`.
    Only add `--force` if what's left is build output or QA artifacts — if there
    are uncommitted source changes, find out what they are first.
 4. Delete the local branch if it's left (`git branch -D <branch>`) and
