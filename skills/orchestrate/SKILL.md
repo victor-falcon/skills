@@ -17,7 +17,8 @@ directory this skill was loaded from: `<skill dir>/../delegate/scripts/multiplex
 with `<skill dir>` replaced by the real absolute path. Source it at the start of each
 Bash call (`. "<skill dir>/../delegate/scripts/multiplexer.sh"`) and check
 `mux_backend` prints `herdr` or `rex` first. If the file is missing, say `delegate`
-isn't installed and stop; if `mux_backend` prints anything else, say so and stop.
+isn't installed in the same skills directory as this skill and stop; if
+`mux_backend` prints anything else, say so and stop.
 
 ## 0. Ledger first — resume if it exists
 
