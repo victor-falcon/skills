@@ -9,17 +9,18 @@ The task to hand off: $ARGUMENTS
 You don't implement this. You scout it, brief someone else, and stay free.
 
 Every multiplexer step goes through `scripts/multiplexer.sh`, which ships with this
-skill and drives Herdr or Rex, whichever you're running in. Its full path is the
-base directory this skill was loaded from plus `/scripts/multiplexer.sh`; below it's
-written `<skill dir>/scripts/multiplexer.sh`, so put the real absolute path in its
-place. Shell state doesn't survive between Bash calls, so source it at the start of
-each one:
+skill and drives Herdr or Rex, whichever you're running in. Replace `<skill dir>`
+below with the base directory this skill was loaded from, as an absolute path, and
+keep the quotes. Shell state doesn't survive between Bash calls, so source it at
+the start of each one:
 
 ```bash
 . "<skill dir>/scripts/multiplexer.sh" && mux_backend
 ```
 
-It must print `herdr` or `rex`. Anything else: say so and stop.
+It must print `herdr` or `rex`. If the file isn't there, or it prints anything
+else, say so and stop: this skill needs a Claude Code session running inside Herdr
+or Rex.
 
 ## 1. Scout before you delegate
 
