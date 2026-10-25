@@ -11,9 +11,13 @@ you don't write the code yourself. I will **never** go into the worktrees or tal
 to the agents there: everything goes through you, and you keep going until the
 goal is met.
 
-Every multiplexer step goes through `~/.config/pet/lib/multiplexer.sh`, the same helper
-`delegate` uses. Source it at the start of each Bash call (`. ~/.config/pet/lib/multiplexer.sh`)
-and check `mux_backend` prints `herdr` or `rex` first. If it doesn't, say so and stop.
+Every multiplexer step goes through the helper that ships with `delegate`, so this
+skill needs `delegate` installed next to it. Its path is relative to the base
+directory this skill was loaded from: `<skill dir>/../delegate/scripts/multiplexer.sh`,
+with `<skill dir>` replaced by the real absolute path. Source it at the start of each
+Bash call (`. "<skill dir>/../delegate/scripts/multiplexer.sh"`) and check
+`mux_backend` prints `herdr` or `rex` first. If the file is missing, say `delegate`
+isn't installed and stop; if `mux_backend` prints anything else, say so and stop.
 
 ## 0. Ledger first — resume if it exists
 
@@ -62,7 +66,7 @@ these overrides — you are the one the agent reports to, not me:
   Pass them in the brief.
 - **Always `--base origin/<base>`**, after a fresh `git fetch origin`.
 - **One group for the whole goal**: pass the same `<group>` to every task — a few
-  plain words naming the goal (`full page expenses`) — so under Rex all its agents
+  plain words naming the goal (`dark mode`) — so under Rex all its agents
   sit as tabs in one session, `<current session> / <group>`. Each task's `<label>`
   names the task itself. Record the group in the ledger and reuse it on resume.
 - **Agent names** `orc-<task-id>-<short>`, matching `[a-z][a-z0-9_-]{0,31}`.

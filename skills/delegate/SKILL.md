@@ -8,12 +8,15 @@ The task to hand off: $ARGUMENTS
 
 You don't implement this. You scout it, brief someone else, and stay free.
 
-Every multiplexer step goes through `~/.config/pet/lib/multiplexer.sh`, which drives Herdr
-or Rex, whichever you're running in. Shell state doesn't survive between Bash
-calls, so source it at the start of each one:
+Every multiplexer step goes through `scripts/multiplexer.sh`, which ships with this
+skill and drives Herdr or Rex, whichever you're running in. Its full path is the
+base directory this skill was loaded from plus `/scripts/multiplexer.sh`; below it's
+written `<skill dir>/scripts/multiplexer.sh`, so put the real absolute path in its
+place. Shell state doesn't survive between Bash calls, so source it at the start of
+each one:
 
 ```bash
-. ~/.config/pet/lib/multiplexer.sh && mux_backend
+. "<skill dir>/scripts/multiplexer.sh" && mux_backend
 ```
 
 It must print `herdr` or `rex`. Anything else: say so and stop.
@@ -46,14 +49,14 @@ files and says so — pass that on to me, don't force it.
 
 ```bash
 git fetch origin --quiet
-. ~/.config/pet/lib/multiplexer.sh && mux_worktree_gc && mux_worktree_create "$PWD" <kebab-branch> origin/<base> "<label>" ["<group>"]
+. "<skill dir>/scripts/multiplexer.sh" && mux_worktree_gc && mux_worktree_create "$PWD" <kebab-branch> origin/<base> "<label>" ["<group>"]
 ```
 
-`<label>` is a few plain words naming the task (`full page expenses`). Pass
+`<label>` is a few plain words naming the task (`dark mode`). Pass
 `<group>` only when the caller gave you one (orchestrate does): every worktree with
 the same group shares one Rex session. Under Rex the session is named after the
 one you're in plus the group, or the label when there's no group:
-`factorial / full page expenses`. Herdr names the workspace after the label.
+`myapp / dark mode`. Herdr names the workspace after the label.
 
 It prints `<worktree path><TAB><handle>` — the handle is the Herdr root pane or the
 Rex session name, which has spaces, so always quote it. Keep both; don't guess them.
@@ -63,7 +66,7 @@ Rex session name, which has spaces, so always quote it. Keep both; don't guess t
 Write the brief to a file first; long prompts don't survive shell quoting. Then:
 
 ```bash
-. ~/.config/pet/lib/multiplexer.sh && mux_agent_launch <kebab-name> "<handle>" "<worktree path>" <brief-file> --dangerously-skip-permissions
+. "<skill dir>/scripts/multiplexer.sh" && mux_agent_launch <kebab-name> "<handle>" "<worktree path>" <brief-file> --dangerously-skip-permissions
 ```
 
 The name must match `[a-z][a-z0-9_-]{0,31}`. It returns once the agent has picked

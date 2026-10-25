@@ -54,6 +54,18 @@ npx skills add victor-falcon/skills --skill ship
 - **sentry-logs** — Scans Sentry logs on a timer and pings you when something
   looks wrong. Reports, never touches code. `/loop 1h /sentry-logs`
 
+## Requirements for delegate and orchestrate
+
+`delegate` and `orchestrate` run agents in their own worktrees through a
+terminal multiplexer, so they need a few things on your machine:
+
+- Herdr or Rex — start your Claude Code session inside one
+- `git`, `jq` and `gh` (logged in; it checks PR state to clean up worktrees)
+
+The multiplexer helper they both source ships with the skill, in
+`skills/delegate/scripts/multiplexer.sh`. `orchestrate` reuses delegate's copy,
+so install `delegate` alongside it.
+
 ## Make them yours
 
 These are starting points, not gospel. `npx skills add` copies each SKILL.md
