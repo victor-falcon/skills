@@ -60,7 +60,7 @@ npx skills add victor-falcon/skills --skill ship
 terminal multiplexer, so they need a few things on your machine:
 
 - Herdr or Rex — start your Claude Code session inside one
-- `git`, `jq` and `gh` (logged in; it checks PR state to clean up worktrees)
+- `git`, `jq`, `shasum` and `gh` (logged in; it checks PR state to clean up worktrees)
 - `claude` on your `PATH`: each worktree agent is a new Claude Code session
 
 Under Rex the worktrees go in `~/.worktrees/<repo>/<branch>`; Herdr picks its own.
