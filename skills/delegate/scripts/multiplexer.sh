@@ -249,9 +249,12 @@ elif [ -n "$REX_BLOCK" ]; then
     done
     case "$1" in session:*) _s="$1" ;; *) _s=$(_mux_session_id "$1") ;; esac  # ponytail: session:* = handles from before groups
     [ -n "$_s" ] || return 0
-    _left=$(_mux_rex window ls -s "$_s" --json 2>/dev/null | jq '[.. | objects | select(.window_id?)] | length')
-    case "$1" in session:*) _left=0 ;; esac
-    [ "${_left:-0}" -eq 0 ] || return 0
+    # Only kill a session we have positively counted as empty: a failed or
+    # garbled `window ls` must keep it, or other agents' tabs go with it.
+    _wls=$(_mux_rex window ls -s "$_s" --json 2>/dev/null) || return 0
+    _left=$(printf '%s' "$_wls" | jq '[.. | objects | select(.window_id?)] | length' 2>/dev/null)
+    case "$_left" in ''|*[!0-9]*) return 0 ;; esac
+    [ "$_left" -eq 0 ] || return 0
     _mux_rex kill "$_s" >/dev/null 2>&1
     # A loop, not `grep -l … | xargs rm`: with no files left, grep would read stdin.
     for _f in "$_MUX_AGENTS"/*; do
