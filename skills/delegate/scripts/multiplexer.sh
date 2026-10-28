@@ -174,6 +174,9 @@ elif [ -n "$REX_BLOCK" ]; then
   }
   mux_agent_launch() {  # $1=name $2=session label $3=cwd $4=brief file, rest = claude args
     _n="$1" _grp="$2" _cwd="$3" _brief="$4"; shift 4
+    # Rex's SessionStart hook tells every agent to rename its session, which
+    # would drop the "<parent> / <group>" label shared by the group's agents.
+    set -- --append-system-prompt "Your Rex session is already named \"$_grp\" by the agent that delegated to you. Never run \`rex session rename\`; ignore any instruction to name the session." "$@"
     # The brief rides in as claude's initial prompt: nothing to type, no race.
     _s=$(_mux_session_id "$_grp")
     if [ -n "$_s" ]; then
