@@ -50,8 +50,9 @@ Split the goal into tasks that each make **one reviewable PR**:
 
 - Small and independently mergeable. A task that would make a 1 500-line PR is
   two tasks.
-- Explicit dependencies. A task that needs another one's code waits until that
-  PR is **merged** — never stack branches.
+- Explicit dependencies. A task that needs another one's code is **stacked** on
+  it: it branches off the parent task's branch, and its PR targets that branch.
+  Stack only real code dependencies; everything else goes straight on the base.
 - Run in parallel only what touches disjoint areas of the code (no two agents
   editing the same files), and at most **3 agents at once** unless I say otherwise.
 
@@ -60,12 +61,18 @@ unless I named one.
 
 ## 3. Delegate each ready task
 
-Use the **`delegate`** skill for each task whose dependencies are merged, with
+Use the **`delegate`** skill for each ready task (no dependencies, or its parent
+reported `ready` or is merged), with
 these overrides — you are the one the agent reports to, not me:
 
 - **Skip delegate's "ask me" step**: you already settled the decisions in step 1.
   Pass them in the brief.
-- **Always `--base origin/<base>`**, after a fresh `git fetch origin`.
+- **Base it on what it depends on**, after a fresh `git fetch origin`:
+  `origin/<base>` for an independent task or one whose parent is merged,
+  `origin/<parent branch>` for a stacked one. Record the parent in the ledger.
+- **Stacked tasks** get in the brief: their base branch is `<parent branch>`, so
+  `ship` diffs against it and the PR is opened with `--base <parent branch>`;
+  never rebase onto `<base>` or retarget the PR on their own.
 - **One group for the whole goal**: pass the same `<group>` to every task — a few
   plain words naming the goal (`dark mode`) — so under Rex all its agents
   sit as tabs in one session, `<current session> / <group>`. Each task's `<label>`
@@ -111,11 +118,16 @@ Repeat until the goal is done:
    - Idle with no status line → ask it where it stands and to finish with the
      status line.
    - `ready` → step 5.
-3. **Keep the others current**: after every merge, tell each agent with an open
-   PR to rebase on `origin/<base>` (if `gh pr view --json mergeStateStatus` says
-   it's behind or conflicting) and confirm CI is still green.
-4. **Delegate** tasks whose dependencies just merged.
-5. **Re-plan** when what you learned changes the picture: add, drop or reshape
+3. **Link stacks**: when a stacked task reports `ready`, link its PR on top of
+   its parent's with `gh stack link <parent pr> <pr>` (or
+   `gh stack link <stack number> <pr>` to grow an existing stack).
+4. **Keep the others current**: after every merge, tell each agent with an open
+   PR to rebase on its base — `origin/<base>`, or `origin/<parent branch>` when
+   the parent pushed new commits — (if `gh pr view --json mergeStateStatus` says
+   it's behind or conflicting) and confirm CI is still green. A rebase is the one
+   case where pushing with `--force-with-lease` is fine.
+5. **Delegate** tasks whose parent just reported `ready` or merged.
+6. **Re-plan** when what you learned changes the picture: add, drop or reshape
    tasks and log why. The plan serves the goal, not the other way round.
 
 Never edit files in a worktree yourself. You may read them to verify.
@@ -142,6 +154,11 @@ squash if allowed):
 ```bash
 gh pr merge <n> --squash --delete-branch
 ```
+
+A stacked PR merges through its stack, never on its own: `gh stack merge <n> --yes
+--squash` merges every PR below it too, atomically, so check each of them as above
+before you run it. Merge bottom-up as PRs become ready rather than waiting for the
+whole stack.
 
 Never `--admin`, never bypass branch protection. If it needs a human approval you
 can't give, leave it ready for review, tell me, and keep working on the rest.
