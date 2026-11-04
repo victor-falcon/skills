@@ -34,13 +34,19 @@ npx skills add victor-falcon/skills --skill ship
   Fowler code smells. The code half of `ship`, on its own.
 - **product-review** — Reviews a diff for side-effects and bugs plus whether it's
   actually right for the user (requirement fit, UX, empty/error states, copy).
-- **delegate** — Hands a task off to a fresh agent in its own worktree (Herdr or Rex):
+- **delegate** — Hands a task off to a fresh agent in its own worktree ([Herdr](https://herdr.dev) or [Rex](https://superlogical.com)):
   scouts the repo first, briefs it with what it found, and tells it to `/ship`.
 - **qa-change** — QAs a change the way it's actually used: browser + recorded
   video for UI, or run the command / hit the endpoint / check logs for backend.
 - **orchestrate** — Give it a goal and walk away: it splits it into PRs,
   delegates each to its own worktree agent, steers them from one place, merges
   what's safe, cleans up the worktrees, and keeps going until the goal is met.
+
+> [!NOTE]
+> `delegate` and `orchestrate` only work inside [Herdr](https://herdr.dev) or
+> [Rex](https://superlogical.com), and `sentry-issues` uses them to hand off its
+> fixes. See [Requirements](#requirements-for-delegate-and-orchestrate). The
+> rest work in any terminal.
 
 **Autonomous loops** — run these with `/loop`:
 
@@ -55,7 +61,10 @@ npx skills add victor-falcon/skills --skill ship
 `delegate` and `orchestrate` run agents in their own worktrees through a
 terminal multiplexer, so they need a few things on your machine:
 
-- Herdr or Rex — start your Claude Code session inside one
+- [Herdr](https://herdr.dev) or [Rex](https://superlogical.com) — start your
+  Claude Code session inside one. No other multiplexer (tmux, Zellij, …) is
+  supported. `sentry-issues` hands its fixes to `delegate`, so it needs one too;
+  without it, it falls back to fixing the issue itself and running `ship`.
 - `git`, `jq`, `shasum` and `gh` (logged in; it checks PR state to clean up worktrees)
 - `claude` on your `PATH`: each worktree agent is a new Claude Code session
 
