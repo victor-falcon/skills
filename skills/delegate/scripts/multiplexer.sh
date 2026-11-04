@@ -16,7 +16,7 @@
 #       both print "<checkout path><TAB><handle>"; the handle is what
 #       mux_agent_launch and mux_worktree_remove take. herdr: the root pane of
 #       a workspace named <label>. rex: the session the agents go in, named
-#       "<current session> / <group>" (group defaults to label), so worktrees
+#       " <current session><group>" (group defaults to label), so worktrees
 #       sharing a group share a session, one tab per agent.
 #   mux_agent_launch <name> <handle> <cwd> <brief-file> [claude args...]
 #       start Claude Code in the worktree and submit the brief as its prompt
@@ -162,12 +162,20 @@ elif [ -n "$REX_BLOCK" ]; then
   _mux_agent() {  # $1=name -> sets _s (session), _b (block) and _ap (worktree)
     read -r _s _b _ap < "$_MUX_AGENTS/$1" 2>/dev/null || { echo "mux: unknown agent '$1'" >&2; return 1; }
   }
-  # "myapp / dark mode": the session we're in plus the group, so
-  # the agents' session sorts next to the one that spawned it. Strip our own
-  # suffix so an agent delegating from an agent session doesn't nest names.
+  # " myappdark mode": the branch icon (nf-dev-git_branch), the
+  # session we're in, a chevron (nf-oct-chevron_right) and the group, so the
+  # agents' session sorts next to the one that spawned it. Strip our own icon
+  # and suffix (and the older " / " one) so an agent delegating from an agent
+  # session doesn't nest names.
+  _MUX_GROUP_ICON=$(printf '\356\234\245')  # U+E725
+  _MUX_GROUP_SEP=$(printf '\357\221\240')   # U+F460
   _mux_group() {  # $1=group
     _base=$(_mux_rex session inspect "$_MUX_SESSION" --json 2>/dev/null | jq -r '.label // empty')
-    printf '%s / %s\n' "${_base%% / *}" "$1"
+    _base="${_base#"$_MUX_GROUP_ICON"}"
+    _base="${_base%%"$_MUX_GROUP_SEP"*}"
+    _base="${_base# }"; _base="${_base% }"  # labels from when the icons were spaced
+    # A space after the branch icon, none around the chevron: it carries its own padding.
+    printf '%s %s%s%s\n' "$_MUX_GROUP_ICON" "${_base%% / *}" "$_MUX_GROUP_SEP" "$1"
   }
   _mux_session_id() {  # $1=label -> id of the live session with that label
     _mux_rex ls --json | jq -r --arg l "$1" '[.sessions[] | select(.label == $l) | .session_id][0] // empty'
@@ -191,7 +199,7 @@ elif [ -n "$REX_BLOCK" ]; then
   mux_agent_launch() {  # $1=name $2=session label $3=cwd $4=brief file, rest = claude args
     _n="$1" _grp="$2" _cwd="$3" _brief="$4"; shift 4
     # Rex's SessionStart hook tells every agent to rename its session, which
-    # would drop the "<parent> / <group>" label shared by the group's agents.
+    # would drop the " <parent><group>" label shared by the group's agents.
     set -- --append-system-prompt "Your Rex session is already named \"$_grp\" by the agent that delegated to you. Never run \`rex session rename\`; ignore any instruction to name the session." "$@"
     # The brief rides in as claude's initial prompt: nothing to type, no race.
     _s=$(_mux_session_id "$_grp")
