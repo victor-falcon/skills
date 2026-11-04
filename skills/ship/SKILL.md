@@ -49,5 +49,6 @@ Run the **`qa-change`** skill before creating the PR: it decides whether browser
 
 After the PR is created, **stay watching the CI until every required check is green** — don't stop at "PR created". Poll the PR's checks (e.g. `gh pr checks --watch`) until all **required** checks have passed.
 
+- Sometimes, depending on the repo, if the PR is not ready to review, the CI is partially run. Make sure to run the full CI.
 - If a required check fails, investigate: fix real failures caused by the change and push, or retry flakes. Then keep watching.
 - Only report the task as done once all required checks are green (skipped/optional non-required checks are fine).
