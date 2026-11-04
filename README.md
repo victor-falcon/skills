@@ -41,11 +41,14 @@ npx skills add victor-falcon/skills --skill ship
 - **orchestrate** — Give it a goal and walk away: it splits it into PRs,
   delegates each to its own worktree agent, steers them from one place, merges
   what's safe, cleans up the worktrees, and keeps going until the goal is met.
+- **on-new-tab** — Launches one thing in a new tab of the session you're in: a
+  fresh Claude Code agent with its own prompt, no worktree or PR. Set
+  `MUX_CLAUDE` to start it with your own wrapper (`MUX_CLAUDE=clc`).
 
 > [!NOTE]
-> `delegate` and `orchestrate` only work inside [Herdr](https://herdr.dev) or
+> `delegate`, `orchestrate` and `on-new-tab` only work inside [Herdr](https://herdr.dev) or
 > [Rex](https://superlogical.com), and `sentry-issues` uses them to hand off its
-> fixes. See [Requirements](#requirements-for-delegate-and-orchestrate). The
+> fixes. See [Requirements](#requirements-for-delegate-orchestrate-and-on-new-tab). The
 > rest work in any terminal.
 
 **Autonomous loops** — run these with `/loop`:
@@ -56,10 +59,11 @@ npx skills add victor-falcon/skills --skill ship
 - **sentry-logs** — Scans Sentry logs on a timer and pings you when something
   looks wrong. Reports, never touches code. `/loop 1h /sentry-logs`
 
-## Requirements for delegate and orchestrate
+## Requirements for delegate, orchestrate and on-new-tab
 
 `delegate` and `orchestrate` run agents in their own worktrees through a
-terminal multiplexer, so they need a few things on your machine:
+terminal multiplexer, and `on-new-tab` opens agents in new tabs, so they need a
+few things on your machine:
 
 - [Herdr](https://herdr.dev) or [Rex](https://superlogical.com) — start your
   Claude Code session inside one. No other multiplexer (tmux, Zellij, …) is
@@ -70,9 +74,9 @@ terminal multiplexer, so they need a few things on your machine:
 
 Under Rex the worktrees go in `~/.worktrees/<repo>/<branch>`; Herdr picks its own.
 
-The multiplexer helper they both source ships with the skill, in
-`skills/delegate/scripts/multiplexer.sh`. `orchestrate` reuses delegate's copy,
-so install `delegate` alongside it.
+The multiplexer helper they all source ships with the skill, in
+`skills/delegate/scripts/multiplexer.sh`. `orchestrate` and `on-new-tab` reuse
+delegate's copy, so install `delegate` alongside them.
 
 ## Make them yours
 

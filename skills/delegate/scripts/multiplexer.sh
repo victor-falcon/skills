@@ -27,6 +27,12 @@
 #   mux_agent_keys   <name> <key>...      press keys, e.g. ctrl+c
 #   mux_worktree_remove <handle> <path> [--force]   drop the worktree and close its workspace
 #   mux_worktree_gc                       clean up every worktree whose PR is merged or closed
+#
+# One-off agent tab (herdr and rex only), no worktree:
+#   mux_agent_tab <title> <cwd> < prompt  new tab in this workspace/session that
+#       starts Claude Code in <cwd> with the prompt read from stdin. The command
+#       is typed into an interactive shell, so aliases and shell functions
+#       resolve: MUX_CLAUDE picks it (default claude, e.g. MUX_CLAUDE=clc).
 
 mux_backend() {
   if [ -n "$HERDR_PANE_ID" ]; then echo herdr
@@ -64,6 +70,8 @@ if [ -n "$HERDR_PANE_ID" ]; then
     herdr pane send-keys "$_np" Enter >/dev/null
     printf '%s\n' "$_np"
   }
+  # herdr's mux_open_tab already types into the new tab's shell.
+  _mux_open_tab_typed() { mux_open_tab "$@"; }
 
   _mux_herdr_worktree() {  # stdin: herdr worktree JSON
     _j=$(cat)
@@ -137,6 +145,14 @@ elif [ -n "$REX_BLOCK" ]; then
     case "${4:-down}" in down) _d=below ;; up) _d=above ;; *) _d="$4" ;; esac
     _mux_rex split -s "$_MUX_SESSION" -b "${3:-$_MUX_SELF}" --split="$_d" --label "$1" --focus=false --json --shell=none \
       -- "${SHELL:-zsh}" -ic "$(_mux_shell_cmd "$2")" | jq -r '.block_ids[0]'
+  }
+  # `-ic` misses functions a shell only loads at its first prompt (lazy or
+  # deferred aliases), so open a plain shell tab and type the command into it:
+  # the PTY buffers the line until the shell reads it.
+  _mux_open_tab_typed() {  # $1=title $2=command
+    _b=$(_mux_rex window new -s "$_MUX_SESSION" "$1" --focus=false --json | jq -r '.block_ids[0]') || return
+    [ -n "$_b" ] && [ "$_b" != null ] || return 1
+    _mux_rex send -s "$_MUX_SESSION" -b "$_b" "$2" && _mux_rex send-key -s "$_MUX_SESSION" -b "$_b" enter
   }
 
   # rex has no worktrees or named agents: git makes the worktree, a rex session
@@ -328,6 +344,19 @@ if [ -n "$HERDR_PANE_ID" ] || [ -n "$REX_BLOCK" ]; then
   mux_worktree_remove() {  # $1=handle $2=path [$3=--force]
     _mux_be_worktree_remove "$@" || return
     rm -f "$_MUX_WORKTREES/$(_mux_wt_record "$2")"
+  }
+
+  _mux_q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }  # single-quote for the shell
+  mux_agent_tab() {  # $1=title $2=cwd; stdin=prompt
+    # The prompt goes through a file: a long multi-line prompt typed straight
+    # into the shell would break on its quoting. The new tab reads it, then deletes it.
+    _pd="${XDG_STATE_HOME:-$HOME/.local/state}/mux/prompts"
+    mkdir -p "$_pd" || return
+    _pf=$(mktemp "$_pd/prompt.XXXXXX") || return
+    cat > "$_pf"
+    [ -s "$_pf" ] || { rm -f "$_pf"; echo "mux: empty prompt" >&2; return 1; }
+    # The leading space keeps the line out of history under HIST_IGNORE_SPACE.
+    _mux_open_tab_typed "$1" " cd -- $(_mux_q "$2") && ${MUX_CLAUDE:-claude} -- \"\$(cat $(_mux_q "$_pf"); rm -f $(_mux_q "$_pf"))\""
   }
 
   mux_worktree_gc() {
