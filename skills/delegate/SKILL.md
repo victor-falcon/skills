@@ -57,10 +57,11 @@ git fetch origin --quiet
 `<group>` only when the caller gave you one (orchestrate does): every worktree with
 the same group shares one Rex session. Under Rex the session is named after the
 one you're in plus the group, or the label when there's no group:
-` myappdark mode`. Herdr names the workspace after the label.
+`myapp / dark mode`, which Rex shows as ` myapp - dark mode`. Herdr names
+the workspace after the label.
 
 It prints `<worktree path><TAB><handle>` — the handle is the Herdr root pane or the
-Rex session name, which has spaces, so always quote it. Keep both; don't guess them.
+Rex handle (`myapp / dark mode`, plain ASCII), which has spaces, so always quote it. Keep both; don't guess them.
 
 ## 4. Start the agent and brief it
 
@@ -85,7 +86,7 @@ it must not touch; the deliverable. Last line is `/ship`.
 ## 5. Report and get out of the way
 
 Give me the worktree path, the branch, the agent name, and where to follow it: the
-Herdr workspace, or the Rex session (` <current session><group or label>`), where
+Herdr workspace, or the Rex session (`<current session> / <group or label>`, shown with a branch icon), where
 the agent's tab carries its name. Don't block waiting on it.
 
 Anything scouting surfaced that I should decide but that doesn't block the work —
