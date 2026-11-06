@@ -96,7 +96,7 @@ in the ledger. Don't wait on one agent before delegating the next.
 
 ## 4. Steer — the loop
 
-Repeat until the goal is done:
+Repeat until the goal is done, one pass every 20 minutes (step 9):
 
 0. **Clear out finished worktrees**: `mux_worktree_gc` drops every worktree whose
    PR is merged or closed, with its workspace / session and local branch — yours
@@ -104,8 +104,8 @@ Repeat until the goal is done:
    `merged`, or `abandoned` if the PR was closed.
 1. **Check on each running agent**: `mux_agent_status <name>`; when it's `idle`,
    `done` or `blocked`, read it with `mux_agent_read <name> 200` and find the last
-   `ORCHESTRATE:` line. To wait instead of polling: `mux_agent_wait <name> 600`
-   (prints the state it settled on). Under Rex the read only sees the agent's
+   `ORCHESTRATE:` line. Don't block on `mux_agent_wait` between passes — the
+   20-minute wake-up (step 9) is the wait. Under Rex the read only sees the agent's
    screen, not its scrollback: if the status line has scrolled off, ask the agent
    to repeat it rather than assuming there is none.
 2. **Act on what it says**, always through `mux_agent_prompt <name> "..."`
@@ -200,12 +200,37 @@ the ledger.
 The goal is done when every item in the definition of done holds **on the base
 branch after the merges** — check each one, don't infer it from the PRs. Then:
 
-- No agents, worktrees or workspaces of yours are left: run `mux_worktree_gc` one
-  last time, then check every one in the ledger is gone from `git worktree list`
-  and `mux_agent_status` no longer finds its agent.
+- **Tear everything down — nothing of yours may outlive the goal.** Go through
+  every task in the ledger, whatever its status (merged, abandoned, failed,
+  still waiting on me), and:
+  1. Stop its agent if it's still alive: `mux_agent_keys <name> ctrl+c ctrl+c`.
+  2. Remove its worktree and workspace / tab: `mux_worktree_remove "<handle>" "<worktree path>"`
+     (`--force` only for build output or QA artifacts, as in step 7).
+  3. Delete its local branch if it's left (`git branch -D <branch>`).
+
+  Then run `mux_worktree_gc` one last time and `git worktree prune && git fetch --prune`,
+  and verify: no ledger worktree in `git worktree list`, `mux_agent_status` no
+  longer finds any of the agents, and under Rex the group's session
+  (`<current session> / <group>`) is gone — under Herdr, no workspace of yours is
+  left. If a session or workspace is still open with nothing of yours running in
+  it, close it. A task still waiting on me keeps its open PR, but not its agent
+  or worktree: say in the report that it can be picked up again with `delegate`.
+- Stop the loop (step 9): no more wake-ups.
 - Give me a short report: what got merged (PR links), anything left waiting on
   me, the decisions you defaulted, and follow-ups you noticed but kept out of scope.
 - Mark the ledger `done`.
 
-If this runs under `/loop`, each run is one pass of step 4 from the ledger; stop
-the loop when the goal is done.
+## 9. Run as a loop — check every 20 minutes, speak only on news
+
+Once the tasks are delegated, don't sit blocking on one agent: run the steering
+loop on a timer. Each wake-up is one pass of step 4 from the ledger, then you
+schedule the next one **20 minutes** out (`ScheduleWakeup` with
+`delaySeconds: 1200`, or `/loop 20m` if that's how you were started). Stop the
+loop when the goal is done.
+
+Each pass, compare what you see against the ledger and **only write to me when
+something changed that I'd care about**: a PR merged or ready, an agent asking a
+question you can't answer, a failure, a re-plan, something waiting on me, or the
+goal done. Keep it to a few lines on what changed. If nothing changed — agents
+still working, CI still running — say nothing: update the ledger's last-checked
+time and schedule the next wake-up silently (mark it `noop`).
