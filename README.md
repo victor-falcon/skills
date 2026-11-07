@@ -72,7 +72,11 @@ few things on your machine:
 - `git`, `jq`, `shasum` and `gh` (logged in; it checks PR state to clean up worktrees)
 - `claude` on your `PATH`: each worktree agent is a new Claude Code session
 
-Under Rex the worktrees go in `~/.worktrees/<repo>/<branch>`; Herdr picks its own.
+Herdr here is the Herdr app on herdr-core: the helper drives it with `hc` and
+`herdr-app`, so both must be on your `PATH`. The old standalone `herdr` CLI is
+no longer supported.
+
+The worktrees go in `~/.worktrees/<repo>/<branch>`.
 
 The multiplexer helper they all source ships with the skill, in
 `skills/delegate/scripts/multiplexer.sh`. `orchestrate` and `on-new-tab` reuse

@@ -1,5 +1,6 @@
-# Multiplexer abstraction for shell snippets and agent skills: herdr if present,
-# else rex, else muxy, else zellij (legacy). POSIX sh, so it also runs under
+# Multiplexer abstraction for shell snippets and agent skills: herdr (the Herdr
+# app on herdr-core, driven with `hc` and `herdr-app`) if present, else rex,
+# else muxy, else zellij (legacy). POSIX sh, so it also runs under
 # `sh -c`. Source once at the top of a snippet:
 #   . /path/to/skills/delegate/scripts/multiplexer.sh
 # Then drive the current pane / new tabs without caring which backend is live:
@@ -14,29 +15,41 @@
 #   mux_worktree_create <cwd> <branch> <base> <label> [group]   new branch off <base>
 #   mux_worktree_open   <cwd> <branch> <label> [group]          existing local branch
 #       both print "<checkout path><TAB><handle>"; the handle is what
-#       mux_agent_launch and mux_worktree_remove take. herdr: the root pane of
-#       a workspace named <label>. rex: "<current session> / <group>" (group
-#       defaults to label), plain ASCII so an agent can copy it. The session the
-#       agents go in is labelled from it with a Nerd Font icon, so worktrees
-#       sharing a group share a session, one tab per agent.
+#       mux_agent_launch and mux_worktree_remove take. Worktrees go in
+#       ~/.worktrees/<repo>/<branch>, and worktrees sharing a group (default:
+#       the label) share a space/session, one tab per agent. herdr: the id of
+#       that space (sp…), named <group>. rex: "<current session> / <group>",
+#       plain ASCII so an agent can copy it; the session is labelled from it
+#       with a Nerd Font icon.
 #   mux_agent_launch <name> <handle> <cwd> <brief-file> [claude args...]
 #       start Claude Code in the worktree and submit the brief as its prompt
 #   mux_agent_status <name>               idle | working | done | blocked | error | unknown
+#                                         (herdr also: exited)
 #   mux_agent_wait   <name> [seconds]     block until idle/done/blocked/error (default 600)
 #   mux_agent_prompt <name> <text>        submit a follow-up prompt
-#   mux_agent_read   <name> [lines]       print recent output (rex: visible screen only)
+#   mux_agent_read   <name> [lines]       print recent output (rex: visible screen only;
+#                                         herdr: screen only while working or blocked)
 #   mux_agent_keys   <name> <key>...      press keys, e.g. ctrl+c
-#   mux_worktree_remove <handle> <path> [--force]   drop the worktree and close its workspace
+#   mux_worktree_remove <handle> <path> [--force]   drop the worktree, end its agents, close their space/session once empty
 #   mux_worktree_gc                       clean up every worktree whose PR is merged or closed
 #
 # One-off agent tab (herdr and rex only), no worktree:
-#   mux_agent_tab <title> <cwd> < prompt  new tab in this workspace/session that
+#   mux_agent_tab <title> <cwd> < prompt  new tab in this space/session that
 #       starts Claude Code in <cwd> with the prompt read from stdin. The command
 #       is typed into an interactive shell, so aliases and shell functions
 #       resolve: MUX_CLAUDE picks it (default claude, e.g. MUX_CLAUDE=clc).
 
+# Herdr: a terminal run by herdr-core (hc) that the Herdr app shows. The app
+# shows a terminal in a space and tab when it carries their ids as labels, so
+# read ours once; a plain hc terminal outside the app has none.
+_MUX_HC_SPACE= _MUX_HC_TAB=
+if [ -n "$HC_TERMINAL_ID" ] && command -v hc >/dev/null 2>&1; then
+  _mux_l=$(hc get "$HC_TERMINAL_ID" --json 2>/dev/null | jq -r '.labels // {} | "\(.["herdr.space"] // "")\t\(.["herdr.tab"] // "")"' 2>/dev/null)
+  _MUX_HC_SPACE="${_mux_l%%	*}" _MUX_HC_TAB="${_mux_l#*	}"
+fi
+
 mux_backend() {
-  if [ -n "$HERDR_PANE_ID" ]; then echo herdr
+  if [ -n "$_MUX_HC_SPACE" ]; then echo herdr
   elif [ -n "$REX_BLOCK" ]; then echo rex
   elif [ -n "$MUXY_PANE_ID" ]; then echo muxy
   elif [ -n "$ZELLIJ" ]; then echo zellij
@@ -44,84 +57,144 @@ mux_backend() {
   fi
 }
 
-# Pull every "<key>": value out of herdr's JSON wherever it nests.
-_mux_jq_first() { jq -r --arg k "$1" '[.. | objects | .[$k]? // empty] | first // empty'; }
+# Worktrees go in ~/.worktrees/<repo>/<branch> under both herdr and rex.
+_mux_wt_path() {  # $1=cwd $2=branch
+  _gd=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir) || return
+  printf '%s/.worktrees/%s/%s\n' "$HOME" "$(basename "$(dirname "$_gd")")" "$(printf '%s' "$2" | tr / -)"
+}
 
-if [ -n "$HERDR_PANE_ID" ]; then
-  _MUX_SELF="$HERDR_PANE_ID"
-  _MUX_TAB="$HERDR_TAB_ID"
+if [ -n "$_MUX_HC_SPACE" ]; then
+  # hc runs the terminals, herdr-app arranges the window. A terminal started
+  # with `hc run --label herdr.space=<id> --label herdr.tab=<id>` shows up in
+  # that space and tab; an id the app doesn't know yet becomes a new one, and
+  # the space closes by itself once its last terminal ends.
+  _MUX_SELF="$HC_TERMINAL_ID"
 
-  mux_rename() { herdr pane rename "$_MUX_SELF" "$1"; }
-  mux_send() { herdr pane send-text "$_MUX_SELF" "$1"; herdr pane send-keys "$_MUX_SELF" Enter; }
-  # herdr: label the tab at creation and read back its root pane id to drive it.
-  mux_open_tab() {  # $1=title  $2=command
-    _p=$(herdr tab create --label "$1" --no-focus | jq -r '.result.root_pane.pane_id')
-    herdr pane send-text "$_p" "$2"
-    herdr pane send-keys "$_p" Enter
+  _mux_hex() { od -An -N16 -tx1 /dev/urandom | tr -d ' \n'; }
+  _mux_app() { herdr-app do "$@" >/dev/null 2>&1; }
+  # The app adopts a new terminal a moment after hc starts it, so commands on
+  # its space or tab fail at first: retry for a few seconds.
+  _mux_app_retry() {
+    _i=0
+    while [ "$_i" -lt 10 ]; do _mux_app "$@" && return 0; _i=$((_i + 1)); sleep 0.5; done
+    return 1
   }
-  mux_focus() { herdr tab focus "$_MUX_TAB"; }  # arg ignored; back to self's tab
-  mux_rename_tab() { herdr tab rename "$_MUX_TAB" "$1"; }
+  _mux_self_pane() { herdr-app ls 2>/dev/null | jq -r --arg t "$_MUX_SELF" '[.. | objects | select(.terminal? == $t) | .pane] | first // empty'; }
+  # zsh -ic loads aliases and functions; drop into a shell when it ends. The
+  # title escape names the pane: Herdr's pane header shows the terminal title.
+  _mux_titled() { printf "printf '\\\\033]2;%%s\\\\007' %s; %s; exec %s" "$(_mux_q "$1")" "$2" "${SHELL:-zsh}"; }
+
+  mux_rename() { printf '\033]2;%s\007' "$1" > /dev/tty 2>/dev/null || :; }  # ponytail: herdr has no pane names, only titles
+  mux_send() { hc send "$_MUX_SELF" "$1" >/dev/null; }
+  # A new tab in our space with a plain shell, the command typed into it: the
+  # shell reads the line once it's up, aliases and lazy functions included.
+  _mux_new_tab() {  # $1=title $2=cwd $3=command
+    _tb="tb$(_mux_hex)"
+    _t=$(hc run --bg --json --no-parent --keep --cwd "$2" \
+      --label "herdr.space=$_MUX_HC_SPACE" --label "herdr.tab=$_tb" | jq -r '.address // empty') || return
+    [ -n "$_t" ] || return 1
+    _mux_app_retry tab.rename --id "$_tb" --name "$1"
+    hc send "$_t" "$3" >/dev/null
+  }
+  mux_open_tab() { _mux_new_tab "$1" "$PWD" "$2"; }  # $1=title $2=command
+  _mux_open_tab_typed() { mux_open_tab "$@"; }
+  mux_focus() { _mux_app tab.select --id "$_MUX_HC_TAB"; }  # arg ignored; back to self's tab
+  mux_rename_tab() { _mux_app tab.rename --id "$_MUX_HC_TAB" --name "$1"; }
   # Split a pane and run a command in the new one; echo its id so callers can
   # chain further splits (e.g. build a 2x2 grid).
   mux_open_pane() {  # $1=title $2=command [$3=source pane, default self] [$4=direction, default down]
-    # Silence the driving calls' JSON so only the new pane id reaches stdout.
-    _np=$(herdr pane split "${3:-$_MUX_SELF}" --direction "${4:-down}" --no-focus | jq -r '.result.pane.pane_id')
-    herdr pane rename "$_np" "$1" >/dev/null
-    herdr pane send-text "$_np" "$2" >/dev/null
-    herdr pane send-keys "$_np" Enter >/dev/null
-    printf '%s\n' "$_np"
+    _src="${3:-$(_mux_self_pane)}"
+    [ -n "$_src" ] || { echo "mux: can't find this terminal's pane" >&2; return 1; }
+    _argv=$(jq -nc --arg sh "${SHELL:-zsh}" --arg c "$(_mux_titled "$1" "$2")" '[$sh, "-ic", $c]')
+    herdr-app do pane.split --direction "${4:-down}" --pane "$_src" --argv "$_argv" | jq -r '.pane // empty'
   }
-  # herdr's mux_open_tab already types into the new tab's shell.
-  _mux_open_tab_typed() { mux_open_tab "$@"; }
 
-  _mux_herdr_worktree() {  # stdin: herdr worktree JSON
-    _j=$(cat)
-    _path=$(printf '%s' "$_j" | _mux_jq_first checkout_path)
-    _pane=$(printf '%s' "$_j" | jq -r '[.. | objects | .root_pane? // empty | .pane_id] | first // empty')
-    [ -n "$_path" ] && [ -n "$_pane" ] || { printf '%s\n' "$_j" >&2; return 1; }
-    printf '%s\t%s\n' "$_path" "$_pane"
+  # Worktree agents. git makes the worktree; the handle is the id of the space
+  # its agents go in, derived from our own space and the group, so worktrees
+  # sharing a group share a space, one tab per agent. Nothing is opened here:
+  # the first agent's terminal brings the space up.
+  _mux_space_for() {  # $1=group -> space id
+    printf 'sp%s\n' "$(printf '%s\n%s' "$_MUX_HC_SPACE" "$1" | shasum | cut -c1-32)"
   }
-  _mux_be_worktree_create() {  # $1=cwd $2=branch $3=base $4=label
-    herdr worktree create --cwd "$1" --branch "$2" --base "$3" --label "$4" --no-focus | _mux_herdr_worktree
+  _mux_be_worktree_create() {  # $1=cwd $2=branch $3=base $4=label [$5=group]
+    _wt=$(_mux_wt_path "$1" "$2") || return
+    git -C "$1" worktree add -q -b "$2" "$_wt" "$3" >&2 || return
+    printf '%s\t%s\n' "$_wt" "$(_mux_space_for "${5:-$4}")"
+    printf '%s\n' "${5:-$4}" > "$(_mux_space_name_file "$(_mux_space_for "${5:-$4}")")"
   }
-  _mux_be_worktree_open() {  # $1=cwd $2=branch $3=label
-    herdr worktree open --cwd "$1" --branch "$2" --label "$3" --no-focus | _mux_herdr_worktree
+  _mux_be_worktree_open() {  # $1=cwd $2=branch $3=label [$4=group]
+    _wt=$(_mux_wt_path "$1" "$2") || return
+    git -C "$1" worktree add -q "$_wt" "$2" >&2 || return
+    printf '%s\t%s\n' "$_wt" "$(_mux_space_for "${4:-$3}")"
+    printf '%s\n' "${4:-$3}" > "$(_mux_space_name_file "$(_mux_space_for "${4:-$3}")")"
   }
-  mux_agent_launch() {  # $1=name $2=root pane $3=cwd (unused) $4=brief file, rest = claude args
-    _n="$1" _pane="$2" _brief="$4"; shift 4
-    # Big repos keep Claude from looking ready within herdr's default 30s.
-    herdr agent start "$_n" --kind claude --pane "$_pane" --timeout 90000 -- "$@" >/dev/null || return
-    herdr agent prompt "$_n" "$(cat "$_brief")" >/dev/null
+  # The space's name, kept until its first agent starts and can name it.
+  _mux_space_name_file() {  # $1=space id -> path
+    mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/mux/herdr-spaces" && \
+      printf '%s/mux/herdr-spaces/%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}" "$1"
   }
-  mux_agent_status() { herdr agent get "$1" | _mux_jq_first agent_status; }
-  mux_agent_wait() {
-    herdr agent wait "$1" --timeout "$(( ${2:-600} * 1000 ))" >/dev/null
-    _rc=$?
-    mux_agent_status "$1"
-    return $_rc
+  mux_agent_launch() {  # $1=name $2=space id $3=cwd $4=brief file, rest = claude args
+    _n="$1" _sp="$2" _cwd="$3" _brief="$4"; shift 4
+    _tb="tb$(_mux_hex)"
+    # The brief rides in as claude's initial prompt: nothing to type, no race.
+    # No parent: the agent must outlive us and not report into our input.
+    hc run --bg --json --no-parent --keep --name "$_n" --cwd "$_cwd" \
+      --label "herdr.space=$_sp" --label "herdr.tab=$_tb" \
+      -- claude "$@" "$(cat "$_brief")" >/dev/null || return
+    _nf=$(_mux_space_name_file "$_sp")
+    [ -f "$_nf" ] && _mux_app_retry space.rename --id "$_sp" --name "$(cat "$_nf")" && rm -f "$_nf"
+    _mux_app_retry tab.rename --id "$_tb" --name "$_n"
+    # Claude reports idle at its first prompt before it picks up the brief, so
+    # only return once it's busy. Still nothing means it's stuck on a dialog it
+    # can't report (folder trust): that's the user's call, so surface it.
+    _i=0
+    while [ "$_i" -lt 60 ]; do
+      case "$(mux_agent_status "$_n")" in working|done|blocked|error) return 0 ;; exited) return 1 ;; esac
+      _i=$((_i + 1))
+      sleep 1
+    done
+    mux_agent_read "$_n" 0 | grep -qi 'trust this folder' && echo "mux: $_n is waiting on the folder-trust dialog" >&2
+    return 3
   }
-  mux_agent_prompt() { herdr agent prompt "$1" "$2" >/dev/null; }
-  mux_agent_read() { herdr agent read "$1" --source recent-unwrapped --lines "${2:-200}"; }
-  mux_agent_keys() { _n="$1"; shift; herdr agent send-keys "$_n" "$@" >/dev/null; }
-  _mux_be_worktree_remove() {  # $1=root pane $2=path [$3=--force]
-    # The handle is the root pane (w9J:p1); its workspace is the part before ':'.
-    _ws="${1%%:*}"
+  mux_agent_status() {  # idle | working | done | blocked | error | exited | unknown
+    _j=$(hc get "$1" --json) || return
+    printf '%s' "$_j" | jq -r 'if .state == "finished" then "exited" else (.status.state // "unknown") end'
+  }
+  mux_agent_wait() {  # $1=name [$2=seconds, default 600]
+    _end=$(( $(date +%s) + ${2:-600} ))
+    while :; do
+      _st=$(mux_agent_status "$1") || return
+      case "$_st" in idle|done|blocked|error|exited) echo "$_st"; return 0 ;; esac
+      _left=$(( _end - $(date +%s) ))
+      [ "$_left" -gt 0 ] || { echo "$_st"; return 1; }
+      # hc wait can return early (a message to us, a check-in): loop until the deadline.
+      hc wait "$1" --timeout "$_left" >/dev/null 2>&1
+    done
+  }
+  mux_agent_prompt() { hc send "$1" "$2" >/dev/null; }
+  # ponytail: while the agent is working or blocked, hc only returns its screen.
+  mux_agent_read() { hc read "$1" --lines "${2:-200}"; }
+  mux_agent_keys() { _n="$1"; shift; hc keys "$_n" "$@" >/dev/null; }
+  _mux_be_worktree_remove() {  # $1=space id $2=path [$3=--force]
     if [ -d "$2" ]; then
-      herdr worktree remove --workspace "$_ws" ${3:+"$3"} >/dev/null || return
+      git -C "$2" worktree remove ${3:+"$3"} "$2" || return
     fi
-    # Removing the worktree leaves its workspace open, so close it ourselves.
-    herdr workspace close "$_ws" >/dev/null 2>&1 || :
-  }
-  # Workspaces left open on a worktree that's already gone, e.g. from before
-  # this lib closed them.
-  _mux_be_orphans() {
-    herdr workspace list 2>/dev/null \
-      | jq -r '.. | objects | select(.workspace_id? and .worktree.is_linked_worktree? == true) | "\(.workspace_id)\t\(.worktree.checkout_path)"' \
-      | while IFS="$(printf '\t')" read -r _ws _p; do
-          [ -d "$_p" ] && continue
-          herdr workspace close "$_ws" >/dev/null 2>&1 && echo "mux: closed orphan workspace $_ws ($_p)"
+    # End the terminals started in this worktree in its space and remove them,
+    # finished ones too; the app closes their tabs, and the space with its last one.
+    hc ls --all --json 2>/dev/null \
+      | jq -r --arg p "$2" '.terminals[]? | select(.cwd == $p or (.cwd | startswith($p + "/"))) | "\(.address) \(.state)"' \
+      | while read -r _t _state; do
+          [ "$_t" = "$_MUX_SELF" ] && continue
+          [ "$(hc get "$_t" --json 2>/dev/null | jq -r '.labels["herdr.space"] // empty')" = "$1" ] || continue
+          if [ "$_state" = live ]; then
+            hc kill "$_t" >/dev/null 2>&1
+            hc wait "$_t" --timeout 10 >/dev/null 2>&1
+          fi
+          hc rm "$_t" >/dev/null 2>&1
         done
+    return 0
   }
+  _mux_be_orphans() { :; }  # ponytail: herdr closes a space once its terminals end
 elif [ -n "$REX_BLOCK" ]; then
   _MUX_SELF="$REX_BLOCK"
   _MUX_SESSION="$REX_SESSION"
@@ -157,7 +230,7 @@ elif [ -n "$REX_BLOCK" ]; then
   }
 
   # rex has no worktrees or named agents: git makes the worktree, a rex session
-  # stands in for herdr's workspace, and a state file maps agent names to their
+  # stands in for herdr's space, and a state file maps agent names to their
   # session, block and worktree.
   _MUX_AGENTS="${XDG_STATE_HOME:-$HOME/.local/state}/mux/rex-agents"
   _mux_agent() {  # $1=name -> sets _s (session), _b (block) and _ap (worktree)
@@ -192,10 +265,6 @@ elif [ -n "$REX_BLOCK" ]; then
   }
   _mux_session_id() {  # $1=label -> id of the live session with that label
     _mux_rex ls --json | jq -r --arg l "$1" '[.sessions[] | select(.label == $l) | .session_id][0] // empty'
-  }
-  _mux_wt_path() {  # $1=cwd $2=branch -> ~/.worktrees/<repo>/<branch>
-    _gd=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir) || return
-    printf '%s/.worktrees/%s/%s\n' "$HOME" "$(basename "$(dirname "$_gd")")" "$(printf '%s' "$2" | tr / -)"
   }
   # The session isn't opened here: an empty one would start with a bare shell
   # tab nobody uses. The first agent opens it with its own tab instead.
@@ -302,7 +371,7 @@ elif [ -n "$REX_BLOCK" ]; then
     done
     return 0
   }
-  _mux_be_orphans() { :; }  # ponytail: every rex workspace came from the registry
+  _mux_be_orphans() { :; }  # ponytail: every rex session came from the registry
 elif [ -n "$MUXY_PANE_ID" ]; then
   _MUX_SELF="$MUXY_PANE_ID"
 
@@ -349,7 +418,7 @@ fi
 # Worktree bookkeeping shared by herdr and rex: every worktree we create is
 # recorded, so the ones whose PR is done can be cleaned up later, even by a
 # different session than the one that delegated them.
-if [ -n "$HERDR_PANE_ID" ] || [ -n "$REX_BLOCK" ]; then
+if [ -n "$_MUX_HC_SPACE" ] || [ -n "$REX_BLOCK" ]; then
   _MUX_WORKTREES="${XDG_STATE_HOME:-$HOME/.local/state}/mux/worktrees"
   _mux_wt_record() { printf '%s' "$1" | shasum | cut -c1-12; }  # $1=path -> registry file name
 
@@ -396,7 +465,7 @@ if [ -n "$HERDR_PANE_ID" ] || [ -n "$REX_BLOCK" ]; then
         fi
         mux_worktree_remove "$_h" "$_p" --force || continue
       else
-        # Someone already dropped the worktree; its workspace is all that's left.
+        # Someone already dropped the worktree; its agents and space or session are all that's left.
         mux_worktree_remove "$_h" "$_p" || continue
       fi
       case "$_state" in MERGED|CLOSED) git -C "$_root" branch -D "$_br" >/dev/null 2>&1 ;; esac

@@ -1,6 +1,6 @@
 ---
 name: on-new-tab
-description: Run one thing in a new tab of the current Herdr workspace or Rex session — starts a fresh Claude Code agent there with a prompt. No worktree, no branch, no /ship. Use when the user wants something launched "in a new tab", "on the side", or "in another tab".
+description: Run one thing in a new tab of the current Herdr space or Rex session — starts a fresh Claude Code agent there with a prompt. No worktree, no branch, no /ship. Use when the user wants something launched "in a new tab", "on the side", or "in another tab".
 argument-hint: <what the new agent should do>
 ---
 

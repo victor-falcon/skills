@@ -44,8 +44,8 @@ running it can't reach me. Everything else: default it, and say so.
 ## 3. Create the worktree
 
 First clear out what earlier hand-offs left behind: `mux_worktree_gc` removes every
-worktree it created whose PR is merged or closed, with its workspace (Herdr) or
-session (Rex) and local branch. It keeps any with uncommitted changes to tracked
+worktree it created whose PR is merged or closed, with its agents, their tabs
+and space (Herdr) or session (Rex), and local branch. It keeps any with uncommitted changes to tracked
 files and says so — pass that on to me, don't force it.
 
 ```bash
@@ -55,13 +55,15 @@ git fetch origin --quiet
 
 `<label>` is a few plain words naming the task (`dark mode`). Pass
 `<group>` only when the caller gave you one (orchestrate does): every worktree with
-the same group shares one Rex session. Under Rex the session is named after the
-one you're in plus the group, or the label when there's no group:
-`myapp / dark mode`, which Rex shows as ` myapp - dark mode`. Herdr names
-the workspace after the label.
+the same group shares one Herdr space or Rex session, one tab per agent. Herdr
+names the space after the group, or the label when there's no group. Rex names
+the session after the one you're in plus the group or label: `myapp / dark mode`,
+which Rex shows as ` myapp - dark mode`. The worktree goes in
+`~/.worktrees/<repo>/<branch>`.
 
-It prints `<worktree path><TAB><handle>` — the handle is the Herdr root pane or the
-Rex handle (`myapp / dark mode`, plain ASCII), which has spaces, so always quote it. Keep both; don't guess them.
+It prints `<worktree path><TAB><handle>`. The handle is the Herdr space id
+(`sp…`) or the Rex handle (`myapp / dark mode`, plain ASCII, with spaces). Always
+quote it. Keep both; don't guess them.
 
 ## 4. Start the agent and brief it
 
@@ -73,7 +75,8 @@ Write the brief to a file first; long prompts don't survive shell quoting. Then:
 
 The name must match `[a-z][a-z0-9_-]{0,31}`. It returns once the agent has picked
 up the brief. Exit status 3 means it's stuck on Claude's folder-trust dialog:
-tell me, don't answer it yourself.
+tell me, don't answer it yourself. Under Herdr the agent is an `hc` terminal named
+`<kebab-name>`, so `hc get` and `hc read` work on it too.
 
 The brief carries, in order: the task; **everything you found while scouting**, so
 it doesn't repeat your work; the decisions I made and the ones you defaulted; what
@@ -86,7 +89,7 @@ it must not touch; the deliverable. Last line is `/ship`.
 ## 5. Report and get out of the way
 
 Give me the worktree path, the branch, the agent name, and where to follow it: the
-Herdr workspace, or the Rex session (`<current session> / <group or label>`, shown with a branch icon), where
+Herdr space (named after the group or label), or the Rex session (`<current session> / <group or label>`, shown with a branch icon), where
 the agent's tab carries its name. Don't block waiting on it.
 
 Anything scouting surfaced that I should decide but that doesn't block the work —
