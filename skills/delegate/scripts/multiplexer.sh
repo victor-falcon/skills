@@ -68,16 +68,53 @@ if [ -n "$_MUX_HC_SPACE" ]; then
   # with `hc run --label herdr.space=<id> --label herdr.tab=<id>` shows up in
   # that space and tab; an id the app doesn't know yet becomes a new one, and
   # the space closes by itself once its last terminal ends.
+  #
+  # On a machine whose core a Herdr window on another machine drives (a
+  # remote, e.g. a server or WSL box), herdr-app isn't installed: names go
+  # straight into this core's layout document, and what only a window can do
+  # (focus, splits) is skipped or falls back to a tab.
   _MUX_SELF="$HC_TERMINAL_ID"
+  if command -v herdr-app >/dev/null 2>&1; then _MUX_HAS_APP=1; else _MUX_HAS_APP=; fi
 
+  # The executable on PATH, even when the shell wraps it in a function or alias.
+  _mux_which() {  # $1=program
+    # tr, not IFS splitting: zsh doesn't split unquoted parameters.
+    _w=$(printf '%s\n' "$PATH" | tr ':' '\n' | while read -r _d; do
+      [ -f "${_d:-.}/$1" ] && [ -x "${_d:-.}/$1" ] && { printf '%s\n' "${_d:-.}/$1"; break; }
+    done)
+    printf '%s\n' "${_w:-$1}"
+  }
   _mux_hex() { od -An -N16 -tx1 /dev/urandom | tr -d ' \n'; }
-  _mux_app() { herdr-app do "$@" >/dev/null 2>&1; }
-  # The app adopts a new terminal a moment after hc starts it, so commands on
-  # its space or tab fail at first: retry for a few seconds.
-  _mux_app_retry() {
+  _mux_app() { [ -n "$_MUX_HAS_APP" ] && herdr-app do "$@" >/dev/null 2>&1; }
+  # The window adopts a new terminal a moment after hc starts it, so renaming
+  # its space or tab fails at first: retry for a few seconds.
+  _mux_name() {  # $1=space|tab $2=id $3=name
     _i=0
-    while [ "$_i" -lt 10 ]; do _mux_app "$@" && return 0; _i=$((_i + 1)); sleep 0.5; done
+    while [ "$_i" -lt 10 ]; do
+      if [ -n "$_MUX_HAS_APP" ]; then _mux_app "$1.rename" --id "$2" --name "$3" && return 0
+      else _mux_doc_name "$@" && return 0
+      fi
+      _i=$((_i + 1)); sleep 0.5
+    done
     return 1
+  }
+  # The window keeps spaces and tabs in this core's `herdr-app` document.
+  # doc.set only writes over the version we read, so a concurrent change by
+  # the window makes it fail and we retry, instead of clobbering it.
+  _mux_rpc() { hc connect 2>/dev/null | head -n 1; }  # stdin: one JSON-RPC request
+  _mux_doc_name() {  # $1=space|tab $2=id $3=name; fails until the window has adopted it
+    _r=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"doc.get","params":{"name":"herdr-app"}}' | _mux_rpc)
+    _v=$(printf '%s' "$_r" | jq -r '.result.version // empty')
+    [ -n "$_v" ] || return 1
+    _req=$(printf '%s' "$_r" | jq -c --arg k "$1" --arg id "$2" --arg n "$3" --argjson ver "$_v" '
+      .result.value
+      | (if $k == "space" then [.spaces[]? | select(.id == $id)] else [.spaces[]?.tabs[]? | select(.id == $id)] end | length) as $hit
+      | select($hit > 0)
+      | (if $k == "space" then .spaces |= map(if .id == $id then .name = $n else . end)
+         else .spaces |= map(.tabs |= map(if .id == $id then .name = $n else . end)) end)
+      | {jsonrpc: "2.0", id: 2, method: "doc.set", params: {name: "herdr-app", value: ., version: $ver}}')
+    [ -n "$_req" ] || return 1
+    printf '%s\n' "$_req" | _mux_rpc | jq -e '.result' >/dev/null 2>&1
   }
   _mux_self_pane() { herdr-app ls 2>/dev/null | jq -r --arg t "$_MUX_SELF" '[.. | objects | select(.terminal? == $t) | .pane] | first // empty'; }
   # zsh -ic loads aliases and functions; drop into a shell when it ends. The
@@ -93,16 +130,18 @@ if [ -n "$_MUX_HC_SPACE" ]; then
     _t=$(hc run --bg --json --no-parent --keep --cwd "$2" \
       --label "herdr.space=$_MUX_HC_SPACE" --label "herdr.tab=$_tb" | jq -r '.address // empty') || return
     [ -n "$_t" ] || return 1
-    _mux_app_retry tab.rename --id "$_tb" --name "$1"
+    _mux_name tab "$_tb" "$1"
     hc send "$_t" "$3" >/dev/null
   }
   mux_open_tab() { _mux_new_tab "$1" "$PWD" "$2"; }  # $1=title $2=command
   _mux_open_tab_typed() { mux_open_tab "$@"; }
-  mux_focus() { _mux_app tab.select --id "$_MUX_HC_TAB"; }  # arg ignored; back to self's tab
-  mux_rename_tab() { _mux_app tab.rename --id "$_MUX_HC_TAB" --name "$1"; }
+  mux_focus() { _mux_app tab.select --id "$_MUX_HC_TAB" || :; }  # arg ignored; back to self's tab (no window here: skipped)
+  mux_rename_tab() { _mux_name tab "$_MUX_HC_TAB" "$1"; }
   # Split a pane and run a command in the new one; echo its id so callers can
   # chain further splits (e.g. build a 2x2 grid).
   mux_open_pane() {  # $1=title $2=command [$3=source pane, default self] [$4=direction, default down]
+    # ponytail: splitting needs the window; without one, open a tab instead (no pane id to chain)
+    [ -n "$_MUX_HAS_APP" ] || { mux_open_tab "$1" "$2"; return; }
     _src="${3:-$(_mux_self_pane)}"
     [ -n "$_src" ] || { echo "mux: can't find this terminal's pane" >&2; return 1; }
     _argv=$(jq -nc --arg sh "${SHELL:-zsh}" --arg c "$(_mux_titled "$1" "$2")" '[$sh, "-ic", $c]')
@@ -138,12 +177,14 @@ if [ -n "$_MUX_HC_SPACE" ]; then
     _tb="tb$(_mux_hex)"
     # The brief rides in as claude's initial prompt: nothing to type, no race.
     # No parent: the agent must outlive us and not report into our input.
+    # The core starts it with its own PATH, which may lack ~/.local/bin, so
+    # pass the claude executable on our PATH.
     hc run --bg --json --no-parent --keep --name "$_n" --cwd "$_cwd" \
       --label "herdr.space=$_sp" --label "herdr.tab=$_tb" \
-      -- claude "$@" "$(cat "$_brief")" >/dev/null || return
+      -- "$(_mux_which claude)" "$@" "$(cat "$_brief")" >/dev/null || return
     _nf=$(_mux_space_name_file "$_sp")
-    [ -f "$_nf" ] && _mux_app_retry space.rename --id "$_sp" --name "$(cat "$_nf")" && rm -f "$_nf"
-    _mux_app_retry tab.rename --id "$_tb" --name "$_n"
+    [ -f "$_nf" ] && _mux_name space "$_sp" "$(cat "$_nf")" && rm -f "$_nf"
+    _mux_name tab "$_tb" "$_n"
     # Claude reports idle at its first prompt before it picks up the brief, so
     # only return once it's busy. Still nothing means it's stuck on a dialog it
     # can't report (folder trust): that's the user's call, so surface it.

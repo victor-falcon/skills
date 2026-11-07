@@ -73,7 +73,9 @@ few things on your machine:
 - `claude` on your `PATH`: each worktree agent is a new Claude Code session
 
 Herdr here is the Herdr app on herdr-core: the helper drives it with `hc` and
-`herdr-app`, so both must be on your `PATH`. The old standalone `herdr` CLI is
+`herdr-app`, so both must be on your `PATH`. On a remote machine whose core a
+Herdr window elsewhere shows (a server, a WSL box), only `hc` is needed: names
+go straight into that core's layout, and splits fall back to tabs. The old standalone `herdr` CLI is
 no longer supported.
 
 The worktrees go in `~/.worktrees/<repo>/<branch>`.
