@@ -16,10 +16,9 @@
 #   mux_worktree_open   <cwd> <branch> <label> [group]          existing local branch
 #       both print "<checkout path><TAB><handle>"; the handle is what
 #       mux_agent_launch and mux_worktree_remove take. Worktrees go in
-#       ~/.worktrees/<repo>/<branch>. herdr: no new space, the handle is the
-#       id of the current space (sp…) and each agent is a tab in it. rex:
-#       worktrees sharing a group (default: the label) share a session, one
-#       tab per agent; the handle is "<current session> / <group>",
+#       ~/.worktrees/<repo>/<branch>, and worktrees sharing a group (default:
+#       the label) share a space/session, one tab per agent. herdr: the id of
+#       that space (sp…), named <group>. rex: "<current session> / <group>",
 #       plain ASCII so an agent can copy it; the session is labelled from it
 #       with a Nerd Font icon.
 #   mux_agent_launch <name> <handle> <cwd> <brief-file> [claude args...]
@@ -31,7 +30,7 @@
 #   mux_agent_read   <name> [lines]       print recent output (rex: visible screen only;
 #                                         herdr: screen only while working or blocked)
 #   mux_agent_keys   <name> <key>...      press keys, e.g. ctrl+c
-#   mux_worktree_remove <handle> <path> [--force]   drop the worktree, end its agents and their tabs (rex: closes the session once empty)
+#   mux_worktree_remove <handle> <path> [--force]   drop the worktree, end its agents, close their space/session once empty
 #   mux_worktree_gc                       clean up every worktree whose PR is merged or closed
 #
 # One-off agent tab (herdr and rex only), no worktree:
@@ -149,30 +148,44 @@ if [ -n "$_MUX_HC_SPACE" ]; then
     herdr-app do pane.split --direction "${4:-down}" --pane "$_src" --argv "$_argv" | jq -r '.pane // empty'
   }
 
-  # Worktree agents. git makes the worktree and nothing else: no new space.
-  # The handle is the id of our own space, so every agent opens as a tab next
-  # to us, its terminal's cwd in its worktree. Groups only matter under rex.
+  # Worktree agents. git makes the worktree; the handle is the id of the space
+  # its agents go in, derived from our own space and the group, so worktrees
+  # sharing a group share a space, one tab per agent. Nothing is opened here:
+  # the first agent's terminal brings the space up.
+  _mux_space_for() {  # $1=group -> space id
+    printf 'sp%s\n' "$(printf '%s\n%s' "$_MUX_HC_SPACE" "$1" | shasum | cut -c1-32)"
+  }
   _mux_be_worktree_create() {  # $1=cwd $2=branch $3=base $4=label [$5=group]
     _wt=$(_mux_wt_path "$1" "$2") || return
     git -C "$1" worktree add -q -b "$2" "$_wt" "$3" >&2 || return
-    printf '%s\t%s\n' "$_wt" "$_MUX_HC_SPACE"
+    printf '%s\t%s\n' "$_wt" "$(_mux_space_for "${5:-$4}")"
+    printf '%s\n' "${5:-$4}" > "$(_mux_space_name_file "$(_mux_space_for "${5:-$4}")")"
   }
   _mux_be_worktree_open() {  # $1=cwd $2=branch $3=label [$4=group]
     _wt=$(_mux_wt_path "$1" "$2") || return
     git -C "$1" worktree add -q "$_wt" "$2" >&2 || return
-    printf '%s\t%s\n' "$_wt" "$_MUX_HC_SPACE"
+    printf '%s\t%s\n' "$_wt" "$(_mux_space_for "${4:-$3}")"
+    printf '%s\n' "${4:-$3}" > "$(_mux_space_name_file "$(_mux_space_for "${4:-$3}")")"
+  }
+  # The space's name, kept until its first agent starts and can name it.
+  _mux_space_name_file() {  # $1=space id -> path
+    mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/mux/herdr-spaces" && \
+      printf '%s/mux/herdr-spaces/%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}" "$1"
   }
   mux_agent_launch() {  # $1=name $2=space id $3=cwd $4=brief file, rest = claude args
     _n="$1" _sp="$2" _cwd="$3" _brief="$4"; shift 4
     _tb="tb$(_mux_hex)"
     # The brief rides in as claude's initial prompt: nothing to type, no race.
     # No parent: the agent must outlive us and not report into our input.
-    # herdr.parent still names us, so the sidebar draws it under our row.
+    # herdr.parent still names us: a sidebar can show the agent's space as a
+    # child of our row instead of a space of its own.
     # The core starts it with its own PATH, which may lack ~/.local/bin, so
     # pass the claude executable on our PATH.
     hc run --bg --json --no-parent --keep --name "$_n" --cwd "$_cwd" \
       --label "herdr.space=$_sp" --label "herdr.tab=$_tb" --label "herdr.parent=$_MUX_SELF" \
       -- "$(_mux_which claude)" "$@" "$(cat "$_brief")" >/dev/null || return
+    _nf=$(_mux_space_name_file "$_sp")
+    [ -f "$_nf" ] && _mux_name space "$_sp" "$(cat "$_nf")" && rm -f "$_nf"
     _mux_name tab "$_tb" "$_n"
     # Claude reports idle at its first prompt before it picks up the brief, so
     # only return once it's busy. Still nothing means it's stuck on a dialog it
@@ -209,8 +222,8 @@ if [ -n "$_MUX_HC_SPACE" ]; then
     if [ -d "$2" ]; then
       git -C "$2" worktree remove ${3:+"$3"} "$2" || return
     fi
-    # End the terminals started in this worktree in that space and remove them,
-    # finished ones too; the app closes their tabs.
+    # End the terminals started in this worktree in its space and remove them,
+    # finished ones too; the app closes their tabs, and the space with its last one.
     hc ls --all --json 2>/dev/null \
       | jq -r --arg p "$2" '.terminals[]? | select(.cwd == $p or (.cwd | startswith($p + "/"))) | "\(.address) \(.state)"' \
       | while read -r _t _state; do
@@ -224,7 +237,7 @@ if [ -n "$_MUX_HC_SPACE" ]; then
         done
     return 0
   }
-  _mux_be_orphans() { :; }  # ponytail: herdr's agents are tabs in our space; removing their terminals closes them
+  _mux_be_orphans() { :; }  # ponytail: herdr closes a space once its terminals end
 elif [ -n "$REX_BLOCK" ]; then
   _MUX_SELF="$REX_BLOCK"
   _MUX_SESSION="$REX_SESSION"

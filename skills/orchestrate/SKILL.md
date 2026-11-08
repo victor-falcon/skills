@@ -75,7 +75,7 @@ these overrides — you are the one the agent reports to, not me:
   never rebase onto `<base>` or retarget the PR on their own.
 - **One group for the whole goal**: pass the same `<group>` to every task — a few
   plain words naming the goal (`dark mode`) — so all its agents sit as tabs in
-  one place: under Herdr, the space you're in (no new space is created), or the Rex session
+  one place: a Herdr space named `<group>`, or the Rex session
   `<current session> / <group>` (shown with a branch icon). Each task's `<label>`
   names the task itself. Record the group in the ledger and reuse it on resume.
 - **Agent names** `orc-<task-id>-<short>`, matching `[a-z][a-z0-9_-]{0,31}`.
@@ -100,7 +100,7 @@ in the ledger. Don't wait on one agent before delegating the next.
 Repeat until the goal is done, one pass every 20 minutes (step 9):
 
 0. **Clear out finished worktrees**: `mux_worktree_gc` drops every worktree whose
-   PR is merged or closed, with its agents, their tabs (and Rex session) and local branch — yours
+   PR is merged or closed, with its agents, space / session and local branch — yours
    and any earlier hand-off's. Update the ledger for the tasks it cleaned:
    `merged`, or `abandoned` if the PR was closed.
 1. **Check on each running agent**: `mux_agent_status <name>`; when it's `idle`,
@@ -194,7 +194,7 @@ keeps the agent count honest:
 5. Mark the task `merged` in the ledger.
 
 Do the same for a task you abandon: close its PR with a comment saying why, then
-clean up. Only ever close tabs, sessions and worktrees **you created** — they're in
+clean up. Only ever close spaces, sessions and worktrees **you created** — they're in
 the ledger.
 
 ## 8. Finish
@@ -213,9 +213,9 @@ branch after the merges** — check each one, don't infer it from the PRs. Then:
   Then run `mux_worktree_gc` one last time and `git worktree prune && git fetch --prune`,
   and verify: no ledger worktree in `git worktree list`, `mux_agent_status` no
   longer finds any of the agents, and under Rex the group's session
-  (`<current session> / <group>`) is gone — under Herdr, none of the agents'
-  tabs is left in your space (`herdr-app ls`). If a session or tab of yours is
-  still open with nothing running in it, close it. A task still waiting on me keeps its open PR, but not its agent
+  (`<current session> / <group>`) is gone — under Herdr, the `<group>` space is
+  gone (`herdr-app ls`). If a session or space is still open with nothing of yours running in
+  it, close it. A task still waiting on me keeps its open PR, but not its agent
   or worktree: say in the report that it can be picked up again with `delegate`.
 - Stop the loop (step 9): no more wake-ups.
 - Give me a short report: what got merged (PR links), anything left waiting on
