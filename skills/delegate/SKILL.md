@@ -45,7 +45,7 @@ running it can't reach me. Everything else: default it, and say so.
 
 First clear out what earlier hand-offs left behind: `mux_worktree_gc` removes every
 worktree it created whose PR is merged or closed, with its agents, their tabs
-and space (Herdr) or session (Rex), and local branch. It keeps any with uncommitted changes to tracked
+(and, under Rex, their session), and local branch. It keeps any with uncommitted changes to tracked
 files and says so — pass that on to me, don't force it.
 
 ```bash
@@ -54,15 +54,15 @@ git fetch origin --quiet
 ```
 
 `<label>` is a few plain words naming the task (`dark mode`). Pass
-`<group>` only when the caller gave you one (orchestrate does): every worktree with
-the same group shares one Herdr space or Rex session, one tab per agent. Herdr
-names the space after the group, or the label when there's no group. Rex names
-the session after the one you're in plus the group or label: `myapp / dark mode`,
+`<group>` only when the caller gave you one (orchestrate does). Under Herdr no
+space is created: the agent opens as a tab in the space you're in, named after
+the agent. Under Rex every worktree with the same group shares one session, one
+tab per agent, and Rex names the session after the one you're in plus the group or label: `myapp / dark mode`,
 which Rex shows as ` myapp - dark mode`. The worktree goes in
 `~/.worktrees/<repo>/<branch>`.
 
-It prints `<worktree path><TAB><handle>`. The handle is the Herdr space id
-(`sp…`) or the Rex handle (`myapp / dark mode`, plain ASCII, with spaces). Always
+It prints `<worktree path><TAB><handle>`. The handle is the id of your current
+Herdr space (`sp…`) or the Rex handle (`myapp / dark mode`, plain ASCII, with spaces). Always
 quote it. Keep both; don't guess them.
 
 ## 4. Start the agent and brief it
@@ -89,7 +89,7 @@ it must not touch; the deliverable. Last line is `/ship`.
 ## 5. Report and get out of the way
 
 Give me the worktree path, the branch, the agent name, and where to follow it: the
-Herdr space (named after the group or label), or the Rex session (`<current session> / <group or label>`, shown with a branch icon), where
+tab in your current Herdr space, or the Rex session (`<current session> / <group or label>`, shown with a branch icon), where
 the agent's tab carries its name. Don't block waiting on it.
 
 Anything scouting surfaced that I should decide but that doesn't block the work —
