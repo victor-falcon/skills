@@ -180,10 +180,12 @@ if [ -n "$_MUX_HC_SPACE" ]; then
     # herdr.parent still names us: a sidebar can show the agent's space as a
     # child of our row instead of a space of its own.
     # The core starts it with its own PATH, which may lack ~/.local/bin, so
-    # pass the claude executable on our PATH.
+    # pass the claude executable on our PATH. It doesn't pass our environment
+    # either, so carry CLAUDE_CONFIG_DIR: without it the agent runs on the
+    # default ~/.claude account instead of ours.
     hc run --bg --json --no-parent --keep --name "$_n" --cwd "$_cwd" \
       --label "herdr.space=$_sp" --label "herdr.tab=$_tb" --label "herdr.parent=$_MUX_SELF" \
-      -- "$(_mux_which claude)" "$@" "$(cat "$_brief")" >/dev/null || return
+      -- /usr/bin/env ${CLAUDE_CONFIG_DIR:+CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR"} "$(_mux_which claude)" "$@" "$(cat "$_brief")" >/dev/null || return
     _nf=$(_mux_space_name_file "$_sp")
     [ -f "$_nf" ] && _mux_name space "$_sp" "$(cat "$_nf")" && rm -f "$_nf"
     _mux_name tab "$_tb" "$_n"
