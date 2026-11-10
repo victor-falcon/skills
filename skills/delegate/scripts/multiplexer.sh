@@ -179,13 +179,14 @@ if [ -n "$_MUX_HC_SPACE" ]; then
     # No parent: the agent must outlive us and not report into our input.
     # herdr.parent still names us: a sidebar can show the agent's space as a
     # child of our row instead of a space of its own.
-    # The core starts it with its own PATH, which may lack ~/.local/bin, so
-    # pass the claude executable on our PATH. It doesn't pass our environment
-    # either, so carry CLAUDE_CONFIG_DIR: without it the agent runs on the
-    # default ~/.claude account instead of ours.
+    # The core starts it with its own environment, not ours, so carry what
+    # the agent needs from it: our PATH (the core's may lack ~/.local/bin,
+    # where hc and claude live; without hc its hooks, like Revive's, fail and
+    # a restart brings back a bare shell) and CLAUDE_CONFIG_DIR (without it
+    # the agent runs on the default ~/.claude account instead of ours).
     hc run --bg --json --no-parent --keep --name "$_n" --cwd "$_cwd" \
       --label "herdr.space=$_sp" --label "herdr.tab=$_tb" --label "herdr.parent=$_MUX_SELF" \
-      -- /usr/bin/env ${CLAUDE_CONFIG_DIR:+CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR"} "$(_mux_which claude)" "$@" "$(cat "$_brief")" >/dev/null || return
+      -- /usr/bin/env PATH="$PATH" ${CLAUDE_CONFIG_DIR:+CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR"} "$(_mux_which claude)" "$@" "$(cat "$_brief")" >/dev/null || return
     _nf=$(_mux_space_name_file "$_sp")
     [ -f "$_nf" ] && _mux_name space "$_sp" "$(cat "$_nf")" && rm -f "$_nf"
     _mux_name tab "$_tb" "$_n"
