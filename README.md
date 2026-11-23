@@ -18,24 +18,24 @@ npx skills add victor-falcon/skills
 Bam — installed. Or pick one:
 
 ```bash
-npx skills add victor-falcon/skills --skill ship
+npx skills add victor-falcon/skills --skill ship-it
 ```
 
 ## The skills
 
 **Slash commands** — you run these:
 
-- **ship** — Implement a task, then finalize it properly: two parallel reviews,
+- **ship-it** — Implement a task, then finalize it properly: two parallel reviews,
   real QA (browser + video for UI), a PR, and it watches CI until every required
   check is green.
 - **pr-ci** — Babysits your PR's CI so you don't: fixes failures caused by your
   diff, retries flakes, and warns when it's `main` that's broken, not you.
 - **technical-review** — Reviews a diff for architecture, bad patterns, and
-  Fowler code smells. The code half of `ship`, on its own.
+  Fowler code smells. The code half of `ship-it`, on its own.
 - **product-review** — Reviews a diff for side-effects and bugs plus whether it's
   actually right for the user (requirement fit, UX, empty/error states, copy).
 - **delegate** — Hands a task off to a fresh agent in its own worktree ([Herdr](https://herdr.dev) or [Rex](https://superlogical.com)):
-  scouts the repo first, briefs it with what it found, and tells it to `/ship`.
+  scouts the repo first, briefs it with what it found, and tells it to `/ship-it`.
 - **qa-change** — QAs a change the way it's actually used: browser + recorded
   video for UI, or run the command / hit the endpoint / check logs for backend.
 - **orchestrate** — Give it a goal and walk away: it splits it into PRs,
@@ -68,7 +68,7 @@ few things on your machine:
 - [Herdr](https://herdr.dev) or [Rex](https://superlogical.com) — start your
   Claude Code session inside one. No other multiplexer (tmux, Zellij, …) is
   supported. `sentry-issues` hands its fixes to `delegate`, so it needs one too;
-  without it, it falls back to fixing the issue itself and running `ship`.
+  without it, it falls back to fixing the issue itself and running `ship-it`.
 - `git`, `jq`, `shasum` and `gh` (logged in; it checks PR state to clean up worktrees)
 - `claude` on your `PATH`: each worktree agent is a new Claude Code session
 

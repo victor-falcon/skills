@@ -1,6 +1,6 @@
 ---
 name: delegate
-description: Hand a task off to a fresh agent in its own worktree (Herdr or Rex), briefed with what you already found out and told to /ship it
+description: Hand a task off to a fresh agent in its own worktree (Herdr or Rex), briefed with what you already found out and told to /ship-it
 argument-hint: <task description>
 ---
 
@@ -82,7 +82,7 @@ tell me, don't answer it yourself. Under Herdr the agent is an `hc` terminal nam
 
 The brief carries, in order: the task; **everything you found while scouting**, so
 it doesn't repeat your work; the decisions I made and the ones you defaulted; what
-it must not touch; the deliverable. Last line is `/ship`.
+it must not touch; the deliverable. Last line is `/ship-it`.
 
 > A launch or prompt that reports a failure may still have landed. Check
 > `mux_agent_status <name>` / `mux_agent_read <name>` before reacting, and

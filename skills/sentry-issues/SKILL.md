@@ -16,11 +16,11 @@ The worktree **must start from `origin/main`**: `git fetch origin` first, then b
 
 Brief it with the Sentry evidence you already gathered, so it doesn't dig it up again: the issue link, the stack trace, the code path it points at, how often it fires and since when, and the reproduction if you worked one out. Then move on to the next issue — don't sit waiting for the agent.
 
-If neither Herdr nor Rex is available, `delegate` stops. In that case do the fix yourself, on a branch off `origin/main`, and run **`ship`** on it.
+If neither Herdr nor Rex is available, `delegate` stops. In that case do the fix yourself, on a branch off `origin/main`, and run **`ship-it`** on it.
 
 ## 2. Tell it how to ship
 
-`ship` — which the brief ends with — already covers the two parallel reviews, the QA and watching CI. What it can't guess is how bold to be, so put that in the brief, from your estimate of the fix's **safety** and **complexity**:
+`ship-it` — which the brief ends with — already covers the two parallel reviews, the QA and watching CI. What it can't guess is how bold to be, so put that in the brief, from your estimate of the fix's **safety** and **complexity**:
 
 - **Not very complex** and you are **very confident** it fixes the problem without creating new ones → create the PR and **enable auto-merge**, watching CI until it's green.
 - Otherwise → create the PR as a **draft**.

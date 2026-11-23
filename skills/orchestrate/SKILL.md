@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Autonomously drive a goal to done — split it into tasks, delegate each to its own worktree agent (Herdr or Rex) that /ships it, steer them from here, merge the PRs that are safe, and clean up the worktrees
+description: Autonomously drive a goal to done — split it into tasks, delegate each to its own worktree agent (Herdr or Rex) that runs /ship-it, steer them from here, merge the PRs that are safe, and clean up the worktrees
 argument-hint: <goal>
 ---
 
@@ -71,7 +71,7 @@ these overrides — you are the one the agent reports to, not me:
   `origin/<base>` for an independent task or one whose parent is merged,
   `origin/<parent branch>` for a stacked one. Record the parent in the ledger.
 - **Stacked tasks** get in the brief: their base branch is `<parent branch>`, so
-  `ship` diffs against it and the PR is opened with `--base <parent branch>`;
+  `ship-it` diffs against it and the PR is opened with `--base <parent branch>`;
   never rebase onto `<base>` or retarget the PR on their own.
 - **One group for the whole goal**: pass the same `<group>` to every task — a few
   plain words naming the goal (`dark mode`) — so all its agents sit as tabs in
@@ -79,7 +79,7 @@ these overrides — you are the one the agent reports to, not me:
   `<current session> / <group>` (shown with a branch icon). Each task's `<label>`
   names the task itself. Record the group in the ledger and reuse it on resume.
 - **Agent names** `orc-<task-id>-<short>`, matching `[a-z][a-z0-9_-]{0,31}`.
-- **Add to the brief, before `/ship`:**
+- **Add to the brief, before `/ship-it`:**
   - Its place in the plan: the goal, what other tasks exist, what's already
     merged, what it must not touch because another agent owns it.
   - **Do not merge the PR and do not enable auto-merge.** The orchestrator merges.
@@ -136,7 +136,7 @@ Never edit files in a worktree yourself. You may read them to verify.
 
 ## 5. Review and merge
 
-`ship` already ran two reviews, QA and CI. Before merging, check it yourself:
+`ship-it` already ran two reviews, QA and CI. Before merging, check it yourself:
 
 - **Scope**: `gh pr diff <n>` — every hunk belongs to this task, nothing from
   another task, no debug leftovers. It does what the task (and the goal) need.

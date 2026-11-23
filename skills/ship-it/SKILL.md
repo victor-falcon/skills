@@ -1,5 +1,5 @@
 ---
-name: ship
+name: ship-it
 description: Implement a task and finalize it (two parallel reviews, QA appropriate to the change — browser + video for UI, otherwise the way it's actually used — a PR, and watching CI until green)
 argument-hint: <task description>
 ---
