@@ -26,6 +26,8 @@
 #   mux_agent_status <name>               idle | working | done | blocked | error | unknown
 #                                         (herdr also: exited)
 #   mux_agent_wait   <name> [seconds]     block until idle/done/blocked/error (default 600)
+#   mux_agent_wait_any <seconds> <name>... block until any of them stops working;
+#                                         prints "<name> <status>", or "timeout"
 #   mux_agent_prompt <name> <text>        submit a follow-up prompt
 #   mux_agent_read   <name> [lines]       print recent output (rex: visible screen only;
 #                                         herdr: screen only while working or blocked)
@@ -493,6 +495,19 @@ if [ -n "$_MUX_HC_SPACE" ] || [ -n "$REX_BLOCK" ]; then
     [ -s "$_pf" ] || { rm -f "$_pf"; echo "mux: empty prompt" >&2; return 1; }
     # The leading space keeps the line out of history under HIST_IGNORE_SPACE.
     _mux_open_tab_typed "$1" " cd -- $(_mux_q "$2") && ${MUX_CLAUDE:-claude} -- \"\$(cat $(_mux_q "$_pf"); rm -f $(_mux_q "$_pf"))\""
+  }
+
+  mux_agent_wait_any() {  # $1=seconds, rest = names; prints "<name> <status>" of the first that stops working
+    _end=$(( $(date +%s) + $1 )); shift
+    [ $# -gt 0 ] || return 1
+    while :; do
+      for _n in "$@"; do
+        _st=$(mux_agent_status "$_n" 2>/dev/null) || _st=gone
+        case "$_st" in working) ;; *) echo "$_n $_st"; return 0 ;; esac
+      done
+      [ "$(date +%s)" -ge "$_end" ] && { echo "timeout"; return 1; }
+      sleep 10
+    done
   }
 
   mux_worktree_gc() {

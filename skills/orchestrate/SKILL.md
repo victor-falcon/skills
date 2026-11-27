@@ -97,7 +97,8 @@ in the ledger. Don't wait on one agent before delegating the next.
 
 ## 4. Steer — the loop
 
-Repeat until the goal is done, one pass every 20 minutes (step 9):
+Repeat until the goal is done, one pass whenever an agent stops working, or every
+20 minutes at the latest (step 9):
 
 0. **Clear out finished worktrees**: `mux_worktree_gc` drops every worktree whose
    PR is merged or closed, with its agents, space / session and local branch — yours
@@ -105,8 +106,8 @@ Repeat until the goal is done, one pass every 20 minutes (step 9):
    `merged`, or `abandoned` if the PR was closed.
 1. **Check on each running agent**: `mux_agent_status <name>`; when it's `idle`,
    `done` or `blocked`, read it with `mux_agent_read <name> 200` and find the last
-   `ORCHESTRATE:` line. Don't block on `mux_agent_wait` between passes — the
-   20-minute wake-up (step 9) is the wait. Under Rex the read only sees the agent's
+   `ORCHESTRATE:` line. Don't block on `mux_agent_wait` in the foreground
+   between passes — the background watcher (step 9) is the wait. Under Rex the read only sees the agent's
    screen, not its scrollback, and under Herdr neither does a read while the agent
    is `working` or `blocked`: if the status line has scrolled off, ask the agent
    to repeat it rather than assuming there is none.
@@ -222,13 +223,26 @@ branch after the merges** — check each one, don't infer it from the PRs. Then:
   me, the decisions you defaulted, and follow-ups you noticed but kept out of scope.
 - Mark the ledger `done`.
 
-## 9. Run as a loop — check every 20 minutes, speak only on news
+## 9. Run as a loop — wake on agent news, 20 minutes at the latest
 
-Once the tasks are delegated, don't sit blocking on one agent: run the steering
-loop on a timer. Each wake-up is one pass of step 4 from the ledger, then you
-schedule the next one **20 minutes** out (`ScheduleWakeup` with
-`delaySeconds: 1200`, or `/loop 20m` if that's how you were started). Stop the
-loop when the goal is done.
+Once the tasks are delegated, don't sit blocking on one agent in the foreground.
+End every pass of step 4 with **both** of these, so a task that finishes in two
+minutes gets steered in two minutes, not twenty:
+
+1. **A watcher**: a Bash call with `run_in_background: true` that sources the
+   helper and runs `mux_agent_wait_any 1200 <name>...` with every agent that is
+   `working` right now (not the idle ones waiting on you, a merge or CI — they'd
+   wake you straight away). Run it directly, no `nohup`/`&`/script file. When
+   it exits you're re-invoked: that's the next pass. If no agent is working,
+   skip the watcher.
+2. **A fallback wake-up** 20 minutes out (`ScheduleWakeup` with
+   `delaySeconds: 1200`, or `/loop 20m` if that's how you were started). It
+   catches what the watcher can't see: CI finishing, a PR merged by someone
+   else, a hung agent.
+
+Whichever fires first runs the pass. Before starting a new watcher, stop the
+previous one if it's still running (`TaskStop`), so there's only ever one. Stop
+both when the goal is done.
 
 Each pass, compare what you see against the ledger and **only write to me when
 something changed that I'd care about**: a PR merged or ready, an agent asking a
